@@ -1,0 +1,23 @@
+{
+  "live_hindi_ws": {
+    "success": true,
+    "bytes_length": 32600,
+    "content_type": "audio/wav",
+    "provider": "sarvam-bulbul-v3-ws",
+    "has_data": true
+  },
+  "live_kannada_ws": {
+    "success": true,
+    "bytes_length": 43049,
+    "content_type": "audio/wav",
+    "provider": "sarvam-bulbul-v3-ws",
+    "has_data": true
+  },
+  "english_fallback": {
+    "attempted_fallback": true,
+    "provider": "unconfigured_or_failed"
+  },
+  "indic_no_fallback": {
+    "correctly_rejected_without_unauthorized_substitution": true
+  }
+}

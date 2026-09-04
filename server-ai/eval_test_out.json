@@ -1,0 +1,38 @@
+{
+  "live": {
+    "correctedText": "नमस्ते, आप कैसे हैं?",
+    "errors": [
+      {
+        "type": "register",
+        "original": "तुम",
+        "corrected": "आप",
+        "explanation": "In a polite greeting, the formal pronoun 'आप' is used instead of the informal 'तुम'."
+      },
+      {
+        "type": "grammar",
+        "original": "कैसा है",
+        "corrected": "कैसे हैं",
+        "explanation": "The adjective and verb must agree with the formal plural subject; use 'कैसे हैं' for 'आप'."
+      }
+    ],
+    "fluencyScore": 80,
+    "encouragement": "बहुत अच्छा प्रयास! आप धीरे-धीरे सुधार रहे हैं।",
+    "aiReply": "मैं भी ठीक हूँ, धन्यवाद। आप आज क्या कर रहे हैं?",
+    "providerUsed": "groq-llama"
+  },
+  "deterministic": {
+    "correctedText": "ನಾನು ಪ್ರತಿದಿನ ಕನ್ನಡ ಕಲಿಯುತ್ತೇನೆ.",
+    "errors": [
+      {
+        "type": "grammar",
+        "original": "ಕಲಿಯುತ್ತೀನಿ.",
+        "corrected": "ಕಲಿಯುತ್ತೇನೆ.",
+        "explanation": "Expected 'ಕಲಿಯುತ್ತೇನೆ.' instead of 'ಕಲಿಯುತ್ತೀನಿ.' in this context."
+      }
+    ],
+    "fluencyScore": 75,
+    "encouragement": "ಒಳ್ಳೆಯ ಪ್ರಯತ್ನ! ನಿರಂತರ ಅಭ್ಯಾಸದಿಂದ ನೀವು ಪರಿಣಿತಿ ಪಡೆಯುತ್ತೀರಿ.",
+    "aiReply": "ತುಂಬಾ ಚೆನ್ನಾಗಿದೆ! ನೀವು ಇದನ್ನು ದಿನನಿತ್ಯ ಬಳಸಬಹುದೇ?",
+    "providerUsed": "deterministic-evaluator"
+  }
+}

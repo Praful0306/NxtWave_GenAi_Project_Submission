@@ -1,0 +1,15 @@
+{
+  "correctedText": "ನಾನು ಬೆಂಗಳೂರಿನಲ್ಲಿ ವಾಸಿಸುತ್ತೇನೆ.",
+  "errors": [
+    {
+      "type": "grammar",
+      "original": "ಬೆಂಗಳೂರು ಇರುತ್ತೇನೆ",
+      "corrected": "ಬೆಂಗಳೂರು‌ನಲ್ಲಿ ವಾಸಿಸುತ್ತೇನೆ",
+      "explanation": "In Kannada, to express living in a place you need the locative suffix '-ನಲ್ಲಿ' and the verb 'ವಾಸಿಸುತ್ತೇನೆ' rather than 'ಇರುತ್ತೇನೆ'."
+    }
+  ],
+  "fluencyScore": 70,
+  "encouragement": "Great effort! Keep practicing, you're doing well.",
+  "aiReply": "ನೀವು ಈಗಲೇ ಬೆಂಗಳೂರಿನಲ್ಲಿ ವಾಸಿಸುತ್ತಿದ್ದೀರಾ? ನಗರದಲ್ಲಿ ನಿಮ್ಮ ಪ್ರಿಯ ಸ್ಥಳ ಯಾವುದು?",
+  "providerUsed": "groq-llama"
+}

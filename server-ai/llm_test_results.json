@@ -1,0 +1,67 @@
+{
+  "live_hindi": {
+    "correctedText": "नमस्ते, आप कैसे हैं?",
+    "errors": [
+      {
+        "type": "register",
+        "original": "तुम",
+        "corrected": "आप",
+        "explanation": "Using 'तुम' is informal; in polite conversation we use 'आप'."
+      },
+      {
+        "type": "grammar",
+        "original": "कैसा है",
+        "corrected": "कैसे हैं",
+        "explanation": "Verb agreement and gender: with 'आप' we use the plural/formal form 'कैसे हैं'."
+      }
+    ],
+    "fluencyScore": 78,
+    "encouragement": "बहुत अच्छा प्रयास! आप धीरे‑धीरे बेहतर हो रहे हैं।",
+    "aiReply": "मैं भी ठीक हूँ, धन्यवाद। आप आज क्या कर रहे हैं?",
+    "providerUsed": "groq-llama"
+  },
+  "live_kannada": {
+    "correctedText": "ನಾನು ಬೆಂಗಳೂರಿನಲ್ಲಿ ವಾಸಿಸುತ್ತೇನೆ.",
+    "errors": [
+      {
+        "type": "grammar",
+        "original": "ಬೆಂಗಳೂರು",
+        "corrected": "ಬೆಂಗಳೂರುನಲ್ಲಿ",
+        "explanation": "The locative suffix ‘ನಲ್ಲಿ’ is required after the city name to mean ‘in Bangalore’."
+      },
+      {
+        "type": "vocabulary",
+        "original": "ಇರುತ್ತೇನೆ",
+        "corrected": "ವಾಸಿಸುತ್ತೇನೆ",
+        "explanation": "‘ಇರುತ್ತೇನೆ’ means ‘I am staying/being’, whereas ‘ವಾಸಿಸುತ್ತೇನೆ’ is the correct verb for ‘I live/reside’."
+      }
+    ],
+    "fluencyScore": 70,
+    "encouragement": "Great effort! Keep practicing, you’re doing well.",
+    "aiReply": "ನಿಮ್ಮನ್ನು ಕೇಳಿ ಸಂತೋಷವಾಯಿತು! ನೀವು ಬೆಂಗಳೂರಿನಲ್ಲಿ ವಾಸಿಸುವುದು ಹೇಗೆ? ನಗರದಲ್ಲಿ ನಿಮಗೆ ಇಷ್ಟವಾದ ಸ್ಥಳಗಳು ಯಾವುವು?",
+    "providerUsed": "groq-llama"
+  },
+  "deterministic_fallback": {
+    "correctedText": "ನಾನು ಪ್ರತಿದಿನ ಕನ್ನಡ ಕಲಿಯುತ್ತೇನೆ.",
+    "errors": [
+      {
+        "type": "grammar",
+        "original": "ಕಲಿಯುತ್ತೀನಿ.",
+        "corrected": "ಕಲಿಯುತ್ತೇನೆ.",
+        "explanation": "Expected 'ಕಲಿಯುತ್ತೇನೆ.' instead of 'ಕಲಿಯುತ್ತೀನಿ.' in this context."
+      }
+    ],
+    "fluencyScore": 75,
+    "encouragement": "ಒಳ್ಳೆಯ ಪ್ರಯತ್ನ! ನಿರಂತರ ಅಭ್ಯಾಸದಿಂದ ನೀವು ಪರಿಣಿತಿ ಪಡೆಯುತ್ತೀರಿ.",
+    "aiReply": "ತುಂಬಾ ಚೆನ್ನಾಗಿದೆ! ನೀವು ಇದನ್ನು ದಿನನಿತ್ಯ ಬಳಸಬಹುದೇ?",
+    "providerUsed": "deterministic-evaluator"
+  },
+  "retry_behavior_success": {
+    "calls": 2,
+    "succeeded": true
+  },
+  "retry_behavior_exhausted_and_cascaded": {
+    "tier1_calls": 2,
+    "cascaded_provider": "groq-llama"
+  }
+}
