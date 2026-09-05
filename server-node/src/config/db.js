@@ -49,7 +49,7 @@ async function connectDB() {
   }
 
   try {
-    await mongoose.connect(uri);
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
     const targetDesc = isMemoryDB
       ? `In-Memory MongoDB Server (${uri})`
       : uri.includes('@')
@@ -58,8 +58,21 @@ async function connectDB() {
     console.log(`[OK] MongoDB connected successfully to ${targetDesc}`);
     return uri;
   } catch (err) {
-    console.error('[ERROR] MongoDB connection failed:', err.message);
-    throw err;
+    console.warn(`[WARN] Primary MongoDB connection failed (${err.message}). Attempting local fallback...`);
+    try {
+      const localUri = 'mongodb://127.0.0.1:27017/vaanitutor';
+      await mongoose.connect(localUri, { serverSelectionTimeoutMS: 3000 });
+      console.log(`[OK] MongoDB connected successfully to Local MongoDB instance (${localUri})`);
+      return localUri;
+    } catch (localErr) {
+      console.log('[INFO] Starting in-memory fallback server (MongoMemoryServer)...');
+      mongoServer = await MongoMemoryServer.create({ instance: { dbName: 'vaanitutor_memory' } });
+      const memUri = mongoServer.getUri();
+      isMemoryDB = true;
+      await mongoose.connect(memUri);
+      console.log(`[OK] MongoDB connected successfully to In-Memory MongoDB Server (${memUri})`);
+      return memUri;
+    }
   }
 }
 

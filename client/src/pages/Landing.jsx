@@ -1,23 +1,17 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import ThemeToggle from '../components/ThemeToggle/ThemeToggle';
 import FeatureCarousel from '../components/landing/FeatureCarousel';
 import ScrollRevealSection from '../components/landing/ScrollRevealSection';
+import Hero3D from '../components/landing/Hero3D';
 import {
   Sparkles,
   ArrowRight,
   Crown,
-  Mic,
-  Languages,
   CheckCircle2,
-  ShieldCheck,
   Zap,
-  Globe,
-  Loader2,
 } from 'lucide-react';
-
-const Hero3D = lazy(() => import('../components/landing/Hero3D'));
 
 export default function Landing() {
   const { user } = useAuthStore();
@@ -30,7 +24,7 @@ export default function Landing() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white overflow-x-hidden">
       {/* ─── HEADER / NAVBAR ─── */}
       <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 px-4 sm:px-8 py-3.5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-amber-500 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-indigo-500/20">
               V
@@ -55,7 +49,7 @@ export default function Landing() {
             </Link>
             <Link
               to="/register"
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/20"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/20"
             >
               Get Started Free
             </Link>
@@ -63,84 +57,74 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* ─── HERO SECTION WITH 3D CANVAS ─── */}
-      <section className="relative pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full text-center space-y-8">
-        <div className="space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 via-amber-500/10 to-purple-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-bold uppercase tracking-wider shadow-lg shadow-indigo-500/5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Next-Gen Indic Voice Language AI Tutor</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight">
-            Master Indian Languages by{' '}
-            <span className="bg-gradient-to-r from-indigo-400 via-amber-400 to-orange-400 bg-clip-text text-transparent">
-              Actually Speaking
-            </span>
-          </h1>
-
-          <p className="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-            Custom day-by-day roadmaps for <strong>Kannada, Hindi, English</strong>, and 8 more Indian languages. Practice with 3 daily activities: conversational voice tutor, word-order games, and retention quizzes.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Link
-              to="/register"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm tracking-wide shadow-xl shadow-indigo-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0"
-            >
-              <span>Start 2 Free Sessions</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 px-6 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold text-sm border border-slate-800 transition"
-            >
-              <span>Continue Learning</span>
-            </Link>
-          </div>
+      {/* ─── HERO SECTION ─── */}
+      <section className="pt-16 pb-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full text-center space-y-6">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 via-amber-500/10 to-purple-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-bold uppercase tracking-wider shadow-lg shadow-indigo-500/5">
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <span>Next-Gen Indic Voice AI Tutor</span>
         </div>
 
-        {/* 3D Geometric Interactive Canvas */}
-        <Suspense
-          fallback={
-            <div className="w-full h-[380px] flex items-center justify-center text-slate-500 text-xs">
-              <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
-            </div>
-          }
-        >
-          <Hero3D />
-        </Suspense>
+        <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight max-w-4xl mx-auto">
+          Master Indian Languages by{' '}
+          <span className="bg-gradient-to-r from-indigo-400 via-amber-400 to-orange-400 bg-clip-text text-transparent">
+            Actually Speaking
+          </span>
+        </h1>
+
+        <p className="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
+          Daily structured 3-part sessions for <strong>Kannada, Hindi, English</strong>, and 8 more Indian languages. Practice conversational speaking, word-order games, and retention quizzes with instant AI feedback.
+        </p>
+
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <Link
+            to="/register"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm tracking-wide shadow-xl shadow-indigo-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <span>Start 2 Free Sessions</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold text-sm border border-slate-800 transition"
+          >
+            <span>Continue Learning</span>
+          </Link>
+        </div>
+
+        {/* 3D Constellation Orb */}
+        <Hero3D />
 
         {/* Live Metrics Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto pt-6 border-t border-slate-800/80">
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/60">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto pt-4">
+          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
             <div className="text-2xl font-black text-amber-400">11</div>
             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
               Indian Languages
             </div>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/60">
+          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
             <div className="text-2xl font-black text-indigo-400">&lt;250ms</div>
             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
-              TTS Audio Latency
+              TTS Latency
             </div>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/60">
+          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
             <div className="text-2xl font-black text-emerald-400">3-Part</div>
             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
               Daily Sessions
             </div>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/60">
+          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
             <div className="text-2xl font-black text-purple-400">100%</div>
             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
-              Isolated Streaks
+              Streak Tracking
             </div>
           </div>
         </div>
       </section>
 
       {/* ─── 11 INDIC LANGUAGES CAROUSEL ─── */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-slate-950/40 border-y border-slate-800/60">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-slate-950/60 border-y border-slate-800/80">
         <FeatureCarousel />
       </section>
 
@@ -150,7 +134,7 @@ export default function Landing() {
       </section>
 
       {/* ─── PRICING & LIFETIME ACCESS ─── */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-slate-950/40 border-t border-slate-800/60">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-slate-950/60 border-t border-slate-800/80">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wider">
@@ -175,13 +159,13 @@ export default function Landing() {
               </div>
               <ul className="space-y-2.5 text-xs text-slate-300 pt-3 border-t border-slate-800">
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> 2 Complete Practice Sessions
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> 2 Complete Practice Sessions
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Full 3-Activity Stepper
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Full 3-Activity Stepper
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Single-turn Speak Feedback
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Single-turn Speak Feedback
                 </li>
               </ul>
               <Link
@@ -210,16 +194,16 @@ export default function Landing() {
               </div>
               <ul className="space-y-2.5 text-xs text-slate-200 pt-3 border-t border-indigo-500/20">
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-amber-400" /> Unlimited Daily Lessons Forever
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" /> Unlimited Daily Lessons Forever
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-indigo-400" /> 5-Turn Conversational Roleplays
+                  <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" /> 5-Turn Conversational Roleplays
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> All 11 Indian Languages
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> All 11 Indian Languages
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-purple-400" /> Adaptive Difficulty Progression
+                  <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0" /> Adaptive Difficulty Progression
                 </li>
               </ul>
               <Link
