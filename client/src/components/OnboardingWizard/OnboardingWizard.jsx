@@ -34,12 +34,12 @@ const DURATION_PRESETS = [
   { days: 60, label: '60 Days', title: 'Deep Immersion' },
 ];
 
-export default function OnboardingWizard({ onComplete, isModal = false }) {
+export default function OnboardingWizard({ onComplete, isModal = false, initialLanguage = 'kn-IN' }) {
   const navigate = useNavigate();
   const { generateRoadmap, isLoading } = useLanguageStore();
 
   const [step, setStep] = useState(1);
-  const [selectedLanguage, setSelectedLanguage] = useState('kn-IN');
+  const [selectedLanguage, setSelectedLanguage] = useState(initialLanguage);
   const [selectedLevel, setSelectedLevel] = useState('Basic');
   const [goalDays, setGoalDays] = useState(30);
   const [error, setError] = useState(null);
