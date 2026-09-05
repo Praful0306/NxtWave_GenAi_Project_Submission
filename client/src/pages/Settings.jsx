@@ -1,519 +1,492 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import { motion, AnimatePresence } from 'framer-motion';
+import AppShell from '../components/AppShell/AppShell';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
-import { useLanguageStore, SUPPORTED_LANGUAGES } from '../store/languageStore';
-import {
-  User,
-  Globe,
-  Moon,
-  Sun,
-  Monitor,
-  AlertTriangle,
-  RefreshCw,
-  CheckCircle2,
-  Loader2,
-  Award,
-  Calendar,
-  Crown,
-  CreditCard,
-  Check,
-  ArrowUpRight,
-} from 'lucide-react';
+import { useLanguageStore, getLanguageMeta } from '../store/languageStore';
 import api from '../services/api';
+import {
+  Button,
+  Card,
+  Badge,
+  Alert,
+  Field,
+  inputClass,
+  PageHeader,
+  EmptyState,
+  LoadingState,
+  ProgressBar,
+  cx,
+} from '../components/ui';
+import {
+  Globe,
+  User,
+  CreditCard,
+  Sun,
+  Moon,
+  Monitor,
+  RefreshCw,
+  TriangleAlert,
+  CheckCircle2,
+  Crown,
+  Check,
+  Receipt,
+} from 'lucide-react';
+
+const TABS = [
+  { id: 'languages', icon: Globe, label: 'Languages' },
+  { id: 'account', icon: User, label: 'Account' },
+  { id: 'billing', icon: CreditCard, label: 'Membership' },
+];
+
+const THEMES = [
+  { id: 'light', label: 'Light', icon: Sun },
+  { id: 'dark', label: 'Dark', icon: Moon },
+  { id: 'system', label: 'System', icon: Monitor },
+];
+
+const PERKS = [
+  'Unlimited daily sessions',
+  '5-turn AI roleplay in Speak',
+  'Adaptive difficulty',
+  'All 11 languages',
+];
 
 export default function Settings() {
   const navigate = useNavigate();
   const { user, updateUser } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
-  const { languages, fetchLanguages, regenerateRoadmap, isLoading } = useLanguageStore();
+  const { languages, regenerateRoadmap, isLoading } = useLanguageStore();
 
-  const [activeTab, setActiveTab] = useState('languages');
-  const [profileName, setProfileName] = useState(user?.name || '');
-  const [profileMessage, setProfileMessage] = useState(null);
+  const [tab, setTab] = useState('languages');
+  const [name, setName] = useState(user?.name || '');
+  const [notice, setNotice] = useState(null);
 
-  // Billing & Purchase History state
   const [payments, setPayments] = useState([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
 
-  // Regeneration modal state
-  const [editingLang, setEditingLang] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [newLevel, setNewLevel] = useState('Basic');
   const [newDays, setNewDays] = useState(30);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [regenSuccess, setRegenSuccess] = useState(null);
+  const [regenError, setRegenError] = useState(null);
 
   useEffect(() => {
-    fetchLanguages();
-  }, []);
+    if (user?.name) setName(user.name);
+  }, [user?.name]);
 
   useEffect(() => {
-    if (activeTab === 'billing') {
-      fetchPaymentHistory();
-    }
-  }, [activeTab]);
-
-  const fetchPaymentHistory = async () => {
+    if (tab !== 'billing') return;
+    let cancelled = false;
     setLoadingPayments(true);
-    try {
-      const res = await api.get('/payments/history');
-      if (res.data?.data) {
-        setPayments(res.data.data);
-      }
-    } catch (_) {
-    } finally {
-      setLoadingPayments(false);
-    }
+    api
+      .get('/payments/history')
+      .then((res) => !cancelled && setPayments(res.data?.data ?? []))
+      .catch(() => !cancelled && setPayments([]))
+      .finally(() => !cancelled && setLoadingPayments(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
+
+  const flash = (tone, text) => {
+    setNotice({ tone, text });
+    setTimeout(() => setNotice(null), 3500);
   };
 
-  const handleProfileSave = async (e) => {
+  const saveProfile = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.patch('/auth/profile', { name: profileName, themePreference: theme });
-      if (res.data?.user) {
-        updateUser(res.data.user);
-      }
-      setProfileMessage({ type: 'success', text: 'Profile updated successfully!' });
-      setTimeout(() => setProfileMessage(null), 3000);
+      const res = await api.patch('/auth/profile', { name, themePreference: theme });
+      if (res.data?.user) updateUser(res.data.user);
+      flash('positive', 'Profile saved.');
     } catch (err) {
-      setProfileMessage({ type: 'error', text: err.response?.data?.error || err.message || 'Failed to update profile' });
+      flash('critical', err.response?.data?.error || 'Couldn’t save your profile.');
     }
   };
 
-  const handleThemeChange = async (newTheme) => {
-    setTheme(newTheme);
+  const changeTheme = async (next) => {
+    setTheme(next);
     try {
-      const res = await api.patch('/auth/profile', { themePreference: newTheme });
-      if (res.data?.user) {
-        updateUser(res.data.user);
-      }
-    } catch (_) {}
+      const res = await api.patch('/auth/profile', { themePreference: next });
+      if (res.data?.user) updateUser(res.data.user);
+    } catch {
+      // Theme still applies locally; syncing it to the profile is best-effort.
+    }
   };
 
-  const openEditModal = (lang) => {
-    setEditingLang(lang);
+  const openRegen = (lang) => {
+    setEditing(lang);
     setNewLevel(lang.level || 'Basic');
-    setNewDays(lang.goalDurationDays || 30);
-    setShowConfirmModal(true);
+    setNewDays(lang.goalDurationDays || lang.totalDays || 30);
+    setRegenError(null);
   };
 
-  const executeRegeneration = async () => {
-    if (!editingLang) return;
+  const confirmRegen = async () => {
+    if (!editing) return;
+    setRegenError(null);
     try {
-      await regenerateRoadmap(editingLang.languageCode, {
+      await regenerateRoadmap(editing.languageCode, {
         newLevel,
         newGoalDurationDays: parseInt(newDays, 10),
       });
-      setShowConfirmModal(false);
-      setRegenSuccess(`Roadmap for ${editingLang.languageCode} successfully regenerated!`);
-      setTimeout(() => setRegenSuccess(null), 4000);
+      const label = getLanguageMeta(editing.languageCode).name;
+      setEditing(null);
+      flash('positive', `${label} roadmap rebuilt from day 1.`);
     } catch (err) {
-      alert(`Regeneration failed: ${err.message}`);
+      setRegenError(err.response?.data?.error || err.message || 'Regeneration failed.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <Navbar />
+    <AppShell className="space-y-6">
+      <PageHeader
+        title="Settings"
+        description="Your languages, your account, and your membership."
+      />
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-8 py-8 space-y-8">
-        <div>
-          <h1 className="text-3xl font-black text-white tracking-tight">Settings & Preferences</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Manage your account profile, theme, and language curriculum roadmaps.
-          </p>
-        </div>
+      {/* Tabs */}
+      <div
+        role="tablist"
+        aria-label="Settings sections"
+        className="inline-flex w-full gap-1 overflow-x-auto rounded-xl border border-line bg-surface-inset p-1 sm:w-auto"
+      >
+        {TABS.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={active}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cx(
+                'relative flex min-h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] font-semibold transition-colors sm:flex-none',
+                active ? 'text-ink' : 'text-ink-faint hover:text-ink'
+              )}
+            >
+              {active && (
+                <motion.span
+                  layoutId="settings-tab"
+                  className="absolute inset-0 rounded-lg bg-surface shadow-xs"
+                  transition={{ type: 'spring', stiffness: 400, damping: 34 }}
+                />
+              )}
+              <t.icon className="relative size-4" aria-hidden="true" />
+              <span className="relative">{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-          <button
-            onClick={() => setActiveTab('languages')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-              activeTab === 'languages'
-                ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
-          >
-            <Globe className="w-4 h-4" /> Enrolled Languages & Roadmaps
-          </button>
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-              activeTab === 'profile'
-                ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
-          >
-            <User className="w-4 h-4" /> Account & Theme
-          </button>
-          <button
-            onClick={() => setActiveTab('billing')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-              activeTab === 'billing'
-                ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
-          >
-            <Crown className="w-4 h-4 text-amber-400" /> Membership & Billing
-          </button>
-        </div>
+      {notice && (
+        <Alert
+          tone={notice.tone}
+          icon={notice.tone === 'positive' ? CheckCircle2 : TriangleAlert}
+        >
+          {notice.text}
+        </Alert>
+      )}
 
-        {regenSuccess && (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {regenSuccess}
-          </div>
-        )}
-
-        {/* ─── LANGUAGES TAB ─── */}
-        {activeTab === 'languages' && (
-          <div className="space-y-6">
-            <div className="space-y-4">
-              {languages.map((lang) => {
-                const meta = SUPPORTED_LANGUAGES.find((l) => l.code === lang.languageCode) || {
-                  name: lang.languageCode,
-                  flag: '🇮🇳',
-                };
-                return (
-                  <div
-                    key={lang.languageCode}
-                    className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="text-3xl p-3 rounded-2xl bg-slate-800 border border-slate-700">
-                        {meta.flag}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-bold text-white">{meta.name}</h3>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                            {lang.level}
-                          </span>
+      {/* ── Languages ── */}
+      {tab === 'languages' &&
+        (languages.length === 0 ? (
+          <EmptyState
+            icon={Globe}
+            title="No languages yet"
+            description="Add your first language to get a personalised roadmap."
+            action={<Button onClick={() => navigate('/onboarding')}>Add a language</Button>}
+          />
+        ) : (
+          <div className="space-y-3">
+            {languages.map((lang) => {
+              const meta = getLanguageMeta(lang.languageCode);
+              const total = lang.totalDays || lang.goalDurationDays || 30;
+              const done = lang.completedDays || 0;
+              return (
+                <Card key={lang.languageCode} className="p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span
+                        className={cx(
+                          'grid size-11 shrink-0 place-items-center rounded-xl font-serif text-xl leading-none',
+                          meta.tile
+                        )}
+                        aria-hidden="true"
+                      >
+                        {meta.script}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-display text-[15px] font-bold text-ink">{meta.name}</h3>
+                          <Badge tone="brand">{lang.level || 'Basic'}</Badge>
                         </div>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Goal: {lang.goalDurationDays || 30} Days • Day {lang.currentDayNumber || 1} • {lang.currentStreak || 0}d streak
+                        <p className="tabular mt-0.5 text-[12px] text-ink-faint">
+                          {total} days · day {lang.currentDayNumber || 1} · {lang.currentStreak || 0}d streak
                         </p>
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(lang)}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition cursor-pointer"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5 text-indigo-400" /> Adjust Level / Goal
-                    </button>
+                    <Button variant="outline" size="sm" onClick={() => openRegen(lang)} className="shrink-0">
+                      <RefreshCw className="size-3.5" aria-hidden="true" />
+                      Change level or length
+                    </Button>
                   </div>
+
+                  <div className="mt-4 space-y-1.5">
+                    <ProgressBar
+                      value={total ? Math.round((done / total) * 100) : 0}
+                      label={`${meta.name} completion`}
+                    />
+                    <p className="tabular text-[12px] text-ink-faint">
+                      {done} of {total} days complete
+                    </p>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        ))}
+
+      {/* ── Account ── */}
+      {tab === 'account' && (
+        <div className="max-w-lg space-y-6">
+          <Card className="p-5">
+            <form onSubmit={saveProfile} className="space-y-4">
+              <Field label="Full name" htmlFor="name">
+                <input
+                  id="name"
+                  type="text"
+                  className={inputClass}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </Field>
+
+              <Field label="Email" htmlFor="email" hint="Your email address can’t be changed.">
+                <input id="email" type="email" className={inputClass} value={user?.email || ''} disabled />
+              </Field>
+
+              <Button type="submit">Save changes</Button>
+            </form>
+          </Card>
+
+          <Card className="p-5">
+            <h3 className="font-display text-[15px] font-bold text-ink">Appearance</h3>
+            <p className="mt-0.5 text-[13px] text-ink-soft">Saved to your profile, so it follows you across devices.</p>
+
+            <div role="radiogroup" aria-label="Theme" className="mt-4 grid grid-cols-3 gap-2">
+              {THEMES.map((t) => {
+                const active = theme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => changeTheme(t.id)}
+                    className={cx(
+                      'flex cursor-pointer flex-col items-center gap-2 rounded-xl border p-4 transition-[border-color,background-color,box-shadow] duration-200',
+                      active
+                        ? 'border-brand bg-brand-soft ring-3 ring-[var(--brand-ring)]'
+                        : 'border-line bg-surface hover:border-line-strong hover:bg-surface-hover'
+                    )}
+                  >
+                    <t.icon className={cx('size-5', active ? 'text-brand' : 'text-ink-faint')} aria-hidden="true" />
+                    <span className={cx('text-[12px] font-bold', active ? 'text-ink' : 'text-ink-soft')}>
+                      {t.label}
+                    </span>
+                  </button>
                 );
               })}
             </div>
-          </div>
-        )}
+          </Card>
+        </div>
+      )}
 
-        {/* ─── PROFILE & THEME TAB ─── */}
-        {activeTab === 'profile' && (
-          <div className="space-y-8 max-w-xl">
-            {profileMessage && (
-              <div
-                className={`p-4 rounded-2xl text-xs ${
-                  profileMessage.type === 'success'
-                    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-                    : 'bg-red-500/10 border border-red-500/20 text-red-400'
-                }`}
-              >
-                {profileMessage.text}
-              </div>
-            )}
-
-            <form onSubmit={handleProfileSave} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={user?.email || ''}
-                  disabled
-                  className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-slate-500 cursor-not-allowed"
-                />
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+      {/* ── Billing ── */}
+      {tab === 'billing' && (
+        <div className="max-w-2xl space-y-5">
+          <Card className={cx('overflow-hidden', user?.isPremium && 'border-accent-300 dark:border-accent-500/40')}>
+            <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <span
+                  className={cx(
+                    'grid size-12 place-items-center rounded-xl',
+                    user?.isPremium ? 'bg-accent-soft text-accent-softfg' : 'bg-surface-inset text-ink-faint'
+                  )}
                 >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-
-            {/* Theme Preference */}
-            <div className="space-y-3 pt-6 border-t border-slate-800">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Theme Preference (Persisted to Profile)
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { id: 'light', label: 'Light', icon: Sun },
-                  { id: 'dark', label: 'Dark', icon: Moon },
-                  { id: 'system', label: 'System', icon: Monitor },
-                ].map((t) => {
-                  const Icon = t.icon;
-                  const isSelected = theme === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => handleThemeChange(t.id)}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-2xl border text-center transition cursor-pointer ${
-                        isSelected
-                          ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 ring-2 ring-indigo-500/20'
-                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span className="text-xs font-semibold">{t.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ─── MEMBERSHIP & BILLING TAB (SPEC SECTION 5 & 6.10) ─── */}
-        {activeTab === 'billing' && (
-          <div className="space-y-8 max-w-2xl">
-            {/* Membership Card */}
-            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className={`p-3.5 rounded-2xl border ${
-                    user?.isPremium
-                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                      : 'bg-slate-800 text-slate-400 border-slate-700'
-                  }`}>
-                    <Crown className="w-6 h-6" />
+                  <Crown className="size-6" aria-hidden="true" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-lg font-bold text-ink">
+                      {user?.isPremium ? 'Premium' : 'Free'}
+                    </h3>
+                    {user?.isPremium && <Badge tone="accent">Lifetime</Badge>}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-white">
-                        {user?.isPremium ? 'VaaniTutor Premium' : 'Starter Free Tier'}
-                      </h3>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        user?.isPremium
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
-                      }`}>
-                        {user?.isPremium ? 'Active' : 'Free Trial'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {user?.isPremium
-                        ? `Member since ${new Date(user.premiumSince || user.createdAt).toLocaleDateString()} • Lifetime Access`
-                        : `${user?.freeSessionsUsed || 0} of 2 free sessions used`}
-                    </p>
-                  </div>
-                </div>
-
-                {!user?.isPremium && (
-                  <button
-                    type="button"
-                    onClick={() => navigate('/paywall')}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition cursor-pointer"
-                  >
-                    <Crown className="w-3.5 h-3.5" /> Upgrade to Premium (₹299)
-                  </button>
-                )}
-              </div>
-
-              {/* Perks Checklist */}
-              <div className="pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-300">
-                <div className="flex items-center gap-2">
-                  <Check className={`w-4 h-4 ${user?.isPremium ? 'text-amber-400' : 'text-slate-500'}`} />
-                  <span>Unlimited daily practice sessions</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className={`w-4 h-4 ${user?.isPremium ? 'text-indigo-400' : 'text-slate-500'}`} />
-                  <span>5-turn Conversational AI Roleplay</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className={`w-4 h-4 ${user?.isPremium ? 'text-emerald-400' : 'text-slate-500'}`} />
-                  <span>Adaptive difficulty & progress tracking</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className={`w-4 h-4 ${user?.isPremium ? 'text-purple-400' : 'text-slate-500'}`} />
-                  <span>All 11 Indic language neural voices</span>
+                  <p className="mt-0.5 text-[13px] text-ink-soft">
+                    {user?.isPremium
+                      ? `Active since ${new Date(user.premiumSince || user.createdAt).toLocaleDateString()}`
+                      : `${user?.freeSessionsUsed ?? 0} of 2 free sessions used`}
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* Purchase History */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-indigo-400" /> Purchase & Payment History
-                </h3>
-              </div>
-
-              {loadingPayments ? (
-                <div className="p-8 rounded-3xl bg-slate-900/40 border border-slate-800 flex items-center justify-center gap-2 text-xs text-slate-400">
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo-400" /> Loading transaction history...
-                </div>
-              ) : payments.length === 0 ? (
-                <div className="p-8 rounded-3xl bg-slate-900/40 border border-slate-800 text-center text-xs text-slate-500">
-                  No payment transactions on record yet.
-                </div>
-              ) : (
-                <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950/60 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
-                      <tr>
-                        <th className="px-4 py-3">Date</th>
-                        <th className="px-4 py-3">Order ID</th>
-                        <th className="px-4 py-3">Amount</th>
-                        <th className="px-4 py-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800 text-slate-300">
-                      {payments.map((p) => (
-                        <tr key={p._id || p.razorpayOrderId} className="hover:bg-slate-800/40 transition">
-                          <td className="px-4 py-3 text-slate-400">
-                            {new Date(p.capturedAt || p.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-3 font-mono text-[11px] text-slate-300">
-                            {p.razorpayOrderId}
-                          </td>
-                          <td className="px-4 py-3 font-bold text-white">
-                            ₹{(p.amount / 100).toFixed(0)} {p.currency}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              p.status === 'captured'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : p.status === 'failed'
-                                ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            }`}>
-                              {p.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              {!user?.isPremium && (
+                <Button variant="accent" onClick={() => navigate('/paywall')} className="shrink-0">
+                  <Crown className="size-4" aria-hidden="true" />
+                  Upgrade — ₹299
+                </Button>
               )}
             </div>
-          </div>
-        )}
-      </main>
 
-      {/* ─── ROADMAP REGENERATION CONFIRMATION MODAL (SPEC SECTION 6.8) ─── */}
-      {showConfirmModal && editingLang && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl relative animate-fadeIn">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">
-                  Regenerate {editingLang.languageCode} Curriculum?
-                </h3>
-                <p className="text-xs text-slate-400">Spec Section 6.8 Confirmation</p>
-              </div>
-            </div>
-
-            {/* Spec Section 6.8 Exact Confirmation Notice */}
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200/90 text-xs leading-relaxed">
-              "This will recalculate your curriculum for your new goal and restart your day-by-day plan at Day 1. Your completed practice history and stats will not be lost, but your active daily roadmap will reset."
-            </div>
-
-            {/* Form controls for new level and duration (3-180 days) */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-indigo-400" /> New Starting Level
-                </label>
-                <select
-                  value={newLevel}
-                  onChange={(e) => setNewLevel(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="Basic">Basic (Beginner)</option>
-                  <option value="Intermediate">Intermediate (Conversational)</option>
-                  <option value="Advanced">Advanced (Fluent & Professional)</option>
-                </select>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-indigo-400" /> New Goal Duration (3–180 Days)
-                  </label>
-                  <span className="text-xs font-mono font-bold text-indigo-400">{newDays} Days</span>
+            <div className="grid gap-2 border-t border-line p-5 sm:grid-cols-2">
+              {PERKS.map((perk) => (
+                <div key={perk} className="flex items-center gap-2 text-[13px]">
+                  <Check
+                    className={cx('size-4 shrink-0', user?.isPremium ? 'text-positive' : 'text-ink-faint')}
+                    aria-hidden="true"
+                  />
+                  <span className={user?.isPremium ? 'text-ink' : 'text-ink-faint'}>{perk}</span>
                 </div>
-                <input
-                  type="range"
-                  min="3"
-                  max="180"
-                  value={newDays}
-                  onChange={(e) => setNewDays(parseInt(e.target.value, 10))}
-                  className="w-full accent-indigo-500 cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
-                  <span>3d</span>
-                  <span>14d</span>
-                  <span>30d</span>
-                  <span>60d</span>
-                  <span>180d</span>
-                </div>
-              </div>
+              ))}
             </div>
+          </Card>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setShowConfirmModal(false)}
-                disabled={isLoading}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={executeRegeneration}
-                disabled={isLoading}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Regenerating...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5" /> Confirm & Regenerate
-                  </>
-                )}
-              </button>
-            </div>
+          <div className="space-y-3">
+            <h3 className="flex items-center gap-2 text-[13px] font-bold text-ink">
+              <Receipt className="size-4 text-ink-faint" aria-hidden="true" />
+              Payment history
+            </h3>
+
+            {loadingPayments ? (
+              <LoadingState label="Loading transactions…" />
+            ) : payments.length === 0 ? (
+              <Card className="px-5 py-8 text-center text-[13px] text-ink-faint">No transactions yet.</Card>
+            ) : (
+              <Card className="overflow-x-auto">
+                <table className="w-full min-w-[32rem] text-left text-[13px]">
+                  <thead className="border-b border-line text-[11px] uppercase tracking-wider text-ink-faint">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 font-semibold">Date</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">Order</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">Amount</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--line)]">
+                    {payments.map((p) => (
+                      <tr key={p._id || p.razorpayOrderId}>
+                        <td className="px-4 py-3 text-ink-soft">
+                          {new Date(p.capturedAt || p.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-[11px] text-ink-faint">{p.razorpayOrderId}</td>
+                        <td className="tabular px-4 py-3 font-bold text-ink">₹{(p.amount / 100).toFixed(0)}</td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            tone={
+                              p.status === 'captured' ? 'positive' : p.status === 'failed' ? 'critical' : 'caution'
+                            }
+                          >
+                            {p.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            )}
           </div>
         </div>
       )}
-    </div>
+
+      {/* ── Regenerate modal ── */}
+      <AnimatePresence>
+        {editing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Regenerate roadmap"
+            onClick={(e) => e.target === e.currentTarget && !isLoading && setEditing(null)}
+            className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-sand-950/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full max-w-md rounded-2xl border border-line bg-surface-raised shadow-lg"
+            >
+              <div className="flex items-start gap-3 border-b border-line p-5">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-caution-soft text-caution">
+                  <TriangleAlert className="size-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 className="font-display text-base font-bold text-ink">Rebuild this roadmap?</h3>
+                  <p className="mt-0.5 text-[13px] text-ink-soft">
+                    {getLanguageMeta(editing.languageCode).name} restarts at day 1. Your practice history and stats
+                    are kept.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 p-5">
+                {regenError && (
+                  <Alert tone="critical" icon={TriangleAlert}>
+                    {regenError}
+                  </Alert>
+                )}
+
+                <Field label="Level" htmlFor="regen-level">
+                  <select
+                    id="regen-level"
+                    value={newLevel}
+                    onChange={(e) => setNewLevel(e.target.value)}
+                    className={cx(inputClass, 'cursor-pointer')}
+                  >
+                    <option value="Basic">Basic</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                  </select>
+                </Field>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="regen-days" className="text-[13px] font-semibold text-ink">
+                      Length
+                    </label>
+                    <span className="tabular font-mono text-[13px] font-bold text-brand">{newDays} days</span>
+                  </div>
+                  <input
+                    id="regen-days"
+                    type="range"
+                    min={3}
+                    max={180}
+                    value={newDays}
+                    onChange={(e) => setNewDays(parseInt(e.target.value, 10))}
+                    className="w-full cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-line p-4">
+                <Button variant="ghost" onClick={() => setEditing(null)} disabled={isLoading}>
+                  Cancel
+                </Button>
+                <Button variant="accent" onClick={confirmRegen} loading={isLoading}>
+                  {isLoading ? 'Rebuilding…' : 'Rebuild roadmap'}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </AppShell>
   );
 }

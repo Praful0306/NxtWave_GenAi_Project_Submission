@@ -1,314 +1,310 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell/AppShell';
 import LanguageCard from '../components/LanguageCard/LanguageCard';
 import OnboardingWizard from '../components/OnboardingWizard/OnboardingWizard';
-import { useLanguageStore, SUPPORTED_LANGUAGES } from '../store/languageStore';
+import { useLanguageStore, SUPPORTED_LANGUAGES, getLanguageMeta } from '../store/languageStore';
 import { useAuthStore } from '../store/authStore';
+import {
+  Button,
+  Card,
+  Badge,
+  StatTile,
+  Skeleton,
+  Eyebrow,
+  CountUp,
+  stagger,
+  riseItem,
+  cx,
+} from '../components/ui';
 import {
   Plus,
   Globe,
   Flame,
-  Award,
-  Sparkles,
-  Loader2,
-  BookOpen,
+  Target,
+  CalendarCheck,
   Mic,
   Puzzle,
-  HelpCircle,
+  ListChecks,
   ArrowRight,
-  ShieldCheck,
-  Zap,
+  X,
+  Crown,
 } from 'lucide-react';
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+const SESSION_STEPS = [
+  {
+    icon: Mic,
+    step: '01',
+    title: 'Speak',
+    body: 'Say the day’s phrase out loud. You get a transcript, a correction and a fluency score in seconds.',
+  },
+  {
+    icon: Puzzle,
+    step: '02',
+    title: 'Word order',
+    body: 'Rebuild the same sentence from scrambled words — the fastest way to internalise Indic syntax.',
+  },
+  {
+    icon: ListChecks,
+    step: '03',
+    title: 'Recall quiz',
+    body: 'A short retention check. Finish it and tomorrow’s day unlocks.',
+  },
+];
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { languages, fetchLanguages, isLoading } = useLanguageStore();
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [modalInitialLang, setModalInitialLang] = useState('kn-IN');
+  const { languages, isLoading, fetchLanguages } = useLanguageStore();
 
-  useEffect(() => {
-    fetchLanguages();
-  }, []);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardLang, setWizardLang] = useState('kn-IN');
 
-  const totalStreak = languages.reduce((acc, l) => Math.max(acc, l.currentStreak || 0), 0);
-  const totalSessions = languages.reduce((acc, l) => acc + (l.sessionsCount || 0), 0);
+  const stats = useMemo(() => {
+    const streak = languages.reduce((m, l) => Math.max(m, l.currentStreak || 0), 0);
+    const sessions = languages.reduce((a, l) => a + (l.sessionsCount || 0), 0);
+    const days = languages.reduce((a, l) => a + (l.completedDays || 0), 0);
+    return { streak, sessions, days };
+  }, [languages]);
 
-  const handleStartLanguage = (langCode) => {
-    setModalInitialLang(langCode);
-    setShowAddModal(true);
+  const openWizard = (code) => {
+    setWizardLang(code);
+    setWizardOpen(true);
   };
 
+  const hasLanguages = languages.length > 0;
+  const showSkeleton = isLoading && !hasLanguages;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
-      <Navbar />
-
-      <motion.main
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 space-y-10"
-      >
-        {/* ─── WELCOME HEADER BANNER ─── */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="relative rounded-3xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-900 border border-slate-800 p-6 sm:p-10 shadow-2xl backdrop-blur-xl overflow-hidden"
-        >
-          <div className="absolute -right-16 -top-16 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -left-16 -bottom-16 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-400 text-xs font-bold uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Learner Command Center</span>
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-                Welcome back,{' '}
-                <span className="bg-gradient-to-r from-indigo-400 via-amber-400 to-orange-400 bg-clip-text text-transparent">
-                  {user?.name || 'Learner'}!
-                </span>
-              </h1>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Practice native conversational speaking, word-order games, and retention quizzes across 11 Indian languages.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setModalInitialLang('kn-IN');
-                  setShowAddModal(true);
-                }}
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs sm:text-sm shadow-xl shadow-indigo-600/30 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Enroll New Language</span>
-              </motion.button>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ─── 3 STATS METRICS GRID ─── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <motion.div
-            whileHover={{ y: -3 }}
-            className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800 shadow-xl flex items-center gap-5 backdrop-blur-xl"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 shadow-inner">
-              <Globe className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="text-3xl font-black text-white">{languages.length}</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
-                Active Enrolled Languages
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ y: -3 }}
-            className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800 shadow-xl flex items-center gap-5 backdrop-blur-xl"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
-              <Flame className="w-7 h-7 fill-amber-500" />
-            </div>
-            <div>
-              <div className="text-3xl font-black text-white">{totalStreak} Days</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
-                Longest Active Streak
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ y: -3 }}
-            className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800 shadow-xl flex items-center gap-5 backdrop-blur-xl"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 shadow-inner">
-              <Award className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="text-3xl font-black text-white">{totalSessions}</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
-                Practice Sessions Completed
-              </div>
-            </div>
-          </motion.div>
+    <AppShell width="wide" className="space-y-8">
+      {/* ── Masthead ── */}
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <Eyebrow>{greeting()}</Eyebrow>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            {user?.name?.split(' ')[0] || 'Learner'}
+            <span className="text-brand">.</span>
+          </h1>
+          <p className="max-w-xl text-sm text-ink-soft">
+            {hasLanguages
+              ? 'Pick up where you left off — every session resumes at the exact activity you stopped on.'
+              : 'Choose a language and we’ll build you a day-by-day speaking plan.'}
+          </p>
         </div>
 
-        {/* ─── ACTIVE ENROLLMENTS OR FEATURED STARTER LANGUAGES ─── */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                {languages.length > 0 ? 'My Active Roadmaps' : 'Choose a Language to Begin'}
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-                {languages.length > 0
-                  ? 'Continue today’s daily speak, game, and quiz sessions.'
-                  : 'Start your personalized curriculum in Kannada, Hindi, English, Tamil, Telugu, and more.'}
-              </p>
-            </div>
-            {languages.length > 0 && (
-              <span className="px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono text-indigo-400 font-bold">
-                {languages.length} Active
-              </span>
-            )}
+        <div className="flex flex-wrap items-center gap-2">
+          {user && !user.isPremium && (
+            <Button variant="outline" onClick={() => navigate('/paywall')}>
+              <Crown className="size-4 text-accent" aria-hidden="true" />
+              Go Premium
+            </Button>
+          )}
+          <Button onClick={() => openWizard('kn-IN')}>
+            <Plus className="size-4" aria-hidden="true" />
+            Add a language
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Stats ── */}
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+      >
+        {[
+          { label: 'Active languages', value: <CountUp value={languages.length} />, icon: Globe, tone: 'brand' },
+          { label: 'Longest streak', value: <CountUp value={`${stats.streak}d`} />, icon: Flame, tone: 'accent' },
+          { label: 'Sessions done', value: <CountUp value={stats.sessions} />, icon: Target, tone: 'positive' },
+          { label: 'Days completed', value: <CountUp value={stats.days} />, icon: CalendarCheck, tone: 'neutral' },
+        ].map((s) => (
+          <motion.div key={s.label} variants={riseItem}>
+            <StatTile {...s} />
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* ── Roadmaps ── */}
+      <section className="space-y-4">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="font-display text-xl font-bold text-ink">
+              {hasLanguages ? 'Your roadmaps' : 'Start a language'}
+            </h2>
+            <p className="mt-0.5 text-[13px] text-ink-soft">
+              {hasLanguages
+                ? 'Each language keeps its own pace, level and streak.'
+                : 'Kannada, Hindi and English are our most thoroughly tested.'}
+            </p>
           </div>
-
-          {isLoading && languages.length === 0 ? (
-            <div className="p-20 text-center flex flex-col items-center justify-center gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-              <p className="text-slate-400 text-sm">Loading your enrolled languages...</p>
-            </div>
-          ) : languages.length > 0 ? (
-            /* User's Enrolled Languages Grid */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {languages.map((lang, idx) => (
-                <motion.div
-                  key={lang.languageCode}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: idx * 0.08 }}
-                >
-                  <LanguageCard
-                    userLanguage={lang}
-                    onSelect={(l) => navigate(`/roadmap/${l.languageCode}`)}
-                  />
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            /* Starter Languages Showcase Grid (Empty State) */
-            <div className="space-y-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {SUPPORTED_LANGUAGES.map((lang, idx) => (
-                  <motion.div
-                    key={lang.code}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: idx * 0.04 }}
-                    whileHover={{ y: -4 }}
-                    className="p-5 rounded-3xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-indigo-500/40 transition-all duration-300 shadow-xl flex flex-col justify-between space-y-4 group backdrop-blur-xl"
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-3xl p-2.5 rounded-2xl bg-slate-950 border border-slate-800 shadow-inner">
-                          {lang.flag}
-                        </span>
-                        {lang.tier === 1 && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-300 border border-amber-500/25">
-                            Tier 1 AI
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition">
-                          {lang.name}
-                        </h3>
-                        <div className="text-xs text-slate-400 font-serif">{lang.nativeName}</div>
-                      </div>
-                      <p className="text-xs text-slate-400 italic bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-                        "{lang.sample}"
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleStartLanguage(lang.code)}
-                      className="w-full py-2.5 px-4 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 hover:border-indigo-600 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/10"
-                    >
-                      <span>Start {lang.name}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Habit Highlights Banner */}
-              <div className="p-8 rounded-3xl bg-slate-900/40 border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                    <Mic className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-white">1. Speak AI Roleplay</h4>
-                    <p className="text-xs text-slate-400">
-                      Practice real speech with sub-250ms streaming feedback and pronunciation tips.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
-                    <Puzzle className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-white">2. Word Scramble Game</h4>
-                    <p className="text-xs text-slate-400">
-                      Drag and tap native words to form natural, grammatically correct sentences.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-                    <HelpCircle className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-white">3. Retention Quiz</h4>
-                    <p className="text-xs text-slate-400">
-                      Rapid recall questions that lock in grammar patterns and unlock tomorrow’s roadmap.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {hasLanguages && (
+            <Badge tone="neutral">
+              <span className="tabular">{languages.length}</span> active
+            </Badge>
           )}
         </div>
-      </motion.main>
 
-      {/* ─── ADD LANGUAGE ONBOARDING MODAL ─── */}
+        {showSkeleton ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="space-y-4 p-5">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="size-12 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                </div>
+                <Skeleton className="h-1.5 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </Card>
+            ))}
+          </div>
+        ) : hasLanguages ? (
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            animate="visible"
+            className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+          >
+            {languages.map((lang) => (
+              <motion.div key={lang.languageCode} variants={riseItem}>
+                <LanguageCard userLanguage={lang} />
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            animate="visible"
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => {
+              const meta = getLanguageMeta(lang.code);
+              return (
+                <motion.button
+                  key={lang.code}
+                  variants={riseItem}
+                  type="button"
+                  onClick={() => openWizard(lang.code)}
+                  className="group flex cursor-pointer flex-col gap-3 rounded-2xl border border-line bg-surface p-4 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span
+                      className={cx(
+                        'grid size-11 place-items-center rounded-xl font-serif text-xl leading-none',
+                        meta.tile
+                      )}
+                      aria-hidden="true"
+                    >
+                      {lang.script}
+                    </span>
+                    {lang.tier === 1 && <Badge tone="brand">Tier 1</Badge>}
+                  </div>
+
+                  <div>
+                    <h3 className="font-display text-[15px] font-bold text-ink">{lang.name}</h3>
+                    <p className="text-[12px] text-ink-faint">{lang.nativeName}</p>
+                  </div>
+
+                  <p className="rounded-lg bg-surface-inset px-3 py-2 text-[13px] leading-relaxed text-ink-soft">
+                    {lang.sample}
+                  </p>
+
+                  <span className="mt-auto inline-flex items-center gap-1 text-[12px] font-bold text-brand">
+                    Start {lang.name}
+                    <ArrowRight
+                      className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </motion.button>
+              );
+            })}
+          </motion.div>
+        )}
+      </section>
+
+      {/* ── How a session works ── */}
+      {!hasLanguages && !showSkeleton && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="font-display text-xl font-bold text-ink">How a day works</h2>
+            <p className="mt-0.5 text-[13px] text-ink-soft">
+              Three short activities, in order. Leave any time — you come back to the same spot.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {SESSION_STEPS.map((s) => (
+              <Card key={s.step} className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="grid size-10 place-items-center rounded-xl bg-brand-soft text-brand-softfg">
+                    <s.icon className="size-5" aria-hidden="true" />
+                  </span>
+                  <span className="tabular font-mono text-[11px] font-bold text-ink-faint">{s.step}</span>
+                </div>
+                <h3 className="mt-4 font-display text-base font-bold text-ink">{s.title}</h3>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">{s.body}</p>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Add-language modal ── */}
       <AnimatePresence>
-        {showAddModal && (
+        {wizardOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50 overflow-y-auto bg-sand-950/60 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add a language"
+            onClick={(e) => e.target === e.currentTarget && setWizardOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              className="relative w-full max-w-3xl my-8"
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+              className="relative mx-auto my-8 w-full max-w-3xl"
             >
               <button
-                onClick={() => setShowAddModal(false)}
-                className="absolute top-4 right-4 z-10 text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/80 text-sm font-bold cursor-pointer transition shadow-lg"
+                type="button"
+                onClick={() => setWizardOpen(false)}
+                aria-label="Close"
+                className="absolute -top-2 right-0 z-10 grid size-9 cursor-pointer place-items-center rounded-lg border border-line bg-surface text-ink-soft transition-colors hover:text-ink sm:-right-2"
               >
-                ✕
+                <X className="size-4" />
               </button>
+
               <OnboardingWizard
-                isModal={true}
-                initialLanguage={modalInitialLang}
-                onComplete={(langCode) => {
-                  setShowAddModal(false);
+                isModal
+                initialLanguage={wizardLang}
+                onComplete={(code) => {
+                  setWizardOpen(false);
                   fetchLanguages();
-                  navigate(`/roadmap/${langCode}`);
+                  navigate(`/roadmap/${code}`);
                 }}
               />
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </AppShell>
   );
 }

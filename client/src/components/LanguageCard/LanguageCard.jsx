@@ -1,122 +1,88 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Flame, Play, ArrowRight, BookOpen, Settings } from 'lucide-react';
-import { SUPPORTED_LANGUAGES } from '../../store/languageStore';
+import { Flame, Play, TrendingUp, ChevronRight } from 'lucide-react';
+import { getLanguageMeta } from '../../store/languageStore';
+import { Card, Badge, Button, ProgressBar, cx } from '../ui';
 
-export default function LanguageCard({ userLanguage, onSelect }) {
+export default function LanguageCard({ userLanguage }) {
   const navigate = useNavigate();
-
-  const langMeta = SUPPORTED_LANGUAGES.find((l) => l.code === userLanguage.languageCode) || {
-    name: userLanguage.languageCode,
-    nativeName: '',
-    script: '🇮🇳',
-    colorGradient: 'from-indigo-500 to-purple-600',
-    accentBorder: 'border-indigo-500/40',
-    badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-  };
+  const meta = getLanguageMeta(userLanguage.languageCode);
 
   const totalDays = userLanguage.totalDays || userLanguage.goalDurationDays || 30;
   const completedDays = userLanguage.completedDays || 0;
   const currentDay = userLanguage.currentDayNumber || Math.min(completedDays + 1, totalDays);
-  const progressPercent = Math.min(Math.round((completedDays / totalDays) * 100), 100);
-
-  const handleContinue = (e) => {
-    e.stopPropagation();
-    navigate(`/roadmap/${userLanguage.languageCode}`);
-  };
+  const percent = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
+  const streak = userLanguage.currentStreak || 0;
 
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.2 }}
-      onClick={() => onSelect && onSelect(userLanguage)}
-      className="p-6 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-indigo-500/40 transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-indigo-500/10 group cursor-pointer relative overflow-hidden backdrop-blur-xl flex flex-col justify-between space-y-5"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3.5">
-          <div
-            className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${langMeta.colorGradient} flex items-center justify-center text-white font-black text-xl shadow-lg shrink-0`}
+    <Card spotlight className="group flex flex-col overflow-hidden">
+      {/* Identity */}
+      <div className="flex items-start justify-between gap-3 p-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className={cx(
+              'grid size-12 shrink-0 place-items-center rounded-xl font-serif text-2xl leading-none',
+              meta.tile
+            )}
+            aria-hidden="true"
           >
-            {langMeta.script || '🇮🇳'}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition">
-                {langMeta.name}
-              </h3>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${langMeta.badgeClass}`}>
-                {userLanguage.level || 'Basic'}
-              </span>
-            </div>
-            <div className="text-xs text-slate-400 font-serif mt-0.5">{langMeta.nativeName}</div>
-          </div>
-        </div>
-
-        {/* Streak Badge */}
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs font-bold font-mono shadow-sm">
-          <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-          <span>{userLanguage.currentStreak || 0}d streak</span>
-        </div>
-      </div>
-
-      {/* Progress Information */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-400 font-medium">Curriculum Progress</span>
-          <span className="text-white font-mono font-bold">
-            Day {currentDay} of {totalDays} ({progressPercent}%)
+            {meta.script}
           </span>
+          <div className="min-w-0">
+            <h3 className="truncate font-display text-base font-bold text-ink">{meta.name}</h3>
+            <p className="truncate text-[12px] text-ink-faint">
+              {meta.nativeName} · {userLanguage.level || 'Basic'}
+            </p>
+          </div>
         </div>
-        <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800/80">
-          <div
-            className={`h-full bg-gradient-to-r ${langMeta.colorGradient} transition-all duration-500`}
-            style={{ width: `${Math.max(progressPercent, 4)}%` }}
-          />
-        </div>
+
+        {streak > 0 && (
+          <Badge tone="accent" icon={Flame} className="shrink-0">
+            <span className="tabular">{streak}d</span>
+          </Badge>
+        )}
       </div>
 
-      {/* Action Footer */}
-      <div className="flex items-center justify-between pt-4 border-t border-slate-800/80">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/progress/${userLanguage.languageCode}`);
-            }}
-            className="text-slate-400 hover:text-indigo-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer"
-            title="View Fluency Analytics & Error Breakdown"
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Analytics</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/settings?tab=languages&lang=${userLanguage.languageCode}`);
-            }}
-            className="text-slate-500 hover:text-slate-300 p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer"
-            title="Language Settings & Regeneration"
-          >
-            <Settings className="w-3.5 h-3.5" />
-          </button>
+      {/* Progress */}
+      <div className="space-y-2 px-5">
+        <div className="flex items-baseline justify-between text-[12px]">
+          <span className="font-medium text-ink-soft">
+            Day <span className="tabular font-bold text-ink">{currentDay}</span> of{' '}
+            <span className="tabular">{totalDays}</span>
+          </span>
+          <span className="tabular font-mono text-[11px] font-bold text-brand">{percent}%</span>
         </div>
+        <ProgressBar value={percent} label={`${meta.name} progress`} />
+      </div>
 
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+      {/* Actions */}
+      <div className="mt-5 flex items-center justify-between gap-2 border-t border-line px-5 py-3">
+        <button
           type="button"
-          onClick={handleContinue}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+          onClick={() => navigate(`/progress/${userLanguage.languageCode}`)}
+          className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg px-2 text-[12px] font-semibold text-ink-faint transition-colors hover:bg-surface-hover hover:text-ink"
         >
-          <Play className="w-3 h-3 fill-white" />
-          <span>Practice Day {currentDay}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </motion.button>
+          <TrendingUp className="size-3.5" aria-hidden="true" />
+          Progress
+        </button>
+
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/roadmap/${userLanguage.languageCode}`)}
+          >
+            Roadmap
+            <ChevronRight className="size-3.5" aria-hidden="true" />
+          </Button>
+          <motion.div whileTap={{ scale: 0.97 }}>
+            <Button size="sm" onClick={() => navigate(`/practice/${userLanguage.languageCode}`)}>
+              <Play className="size-3.5 fill-current" aria-hidden="true" />
+              Practise
+            </Button>
+          </motion.div>
+        </div>
       </div>
-    </motion.div>
+    </Card>
   );
 }

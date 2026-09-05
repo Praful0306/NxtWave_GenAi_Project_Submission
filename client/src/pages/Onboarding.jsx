@@ -1,14 +1,24 @@
-import React from 'react';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell/AppShell';
 import OnboardingWizard from '../components/OnboardingWizard/OnboardingWizard';
+import { Eyebrow } from '../components/ui';
+import { Sparkles } from 'lucide-react';
 
 export default function Onboarding() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <Navbar />
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-12 flex flex-col justify-center">
-        <OnboardingWizard />
-      </main>
-    </div>
+    <AppShell className="space-y-6">
+      <div className="space-y-2 text-center">
+        <Eyebrow icon={Sparkles} className="justify-center">
+          Three questions
+        </Eyebrow>
+        <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">
+          Let’s build your plan
+        </h1>
+        <p className="mx-auto max-w-md text-sm text-ink-soft">
+          Tell us the language, where you’re starting from, and how long you’ve got.
+        </p>
+      </div>
+
+      <OnboardingWizard />
+    </AppShell>
   );
 }

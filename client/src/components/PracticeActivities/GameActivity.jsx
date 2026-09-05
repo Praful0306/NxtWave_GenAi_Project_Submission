@@ -1,182 +1,192 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle2, RotateCcw, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
-import './GameActivity.css';
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { RotateCcw, ArrowRight, CheckCircle2, AlertCircle, Lightbulb } from 'lucide-react';
+import { Card, Button, Badge, Alert, cx } from '../ui';
 
-export default function GameActivity({
-  targetSentence,
-  onComplete,
-  languageCode,
-  isSubmitting = false,
-}) {
-  // Split sentence into words and create initial scrambled tokens
-  const cleanTokens = targetSentence
-    .replace(/[।.,?!]/g, '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+const shuffle = (arr) => {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+};
 
-  const [availableWords, setAvailableWords] = useState([]);
-  const [selectedWords, setSelectedWords] = useState([]);
-  const [isCorrect, setIsCorrect] = useState(null);
+export default function GameActivity({ targetSentence = '', onComplete, isSubmitting = false }) {
+  const tokens = useMemo(
+    () =>
+      targetSentence
+        .replace(/[।.,?!]/g, '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean),
+    [targetSentence]
+  );
+
+  const [pool, setPool] = useState([]);
+  const [built, setBuilt] = useState([]);
+  const [correct, setCorrect] = useState(null);
   const [attempts, setAttempts] = useState(0);
+  const [showHint, setShowHint] = useState(false);
 
-  // Scramble tokens on mount / targetSentence change
+  const reset = useMemo(
+    () => () => {
+      const indexed = tokens.map((word, i) => ({ id: `${word}-${i}`, word }));
+      // Re-shuffle until the order actually differs, so short phrases aren't handed to the learner solved.
+      let scrambled = shuffle(indexed);
+      if (indexed.length > 1) {
+        let guard = 0;
+        while (scrambled.every((t, i) => t.id === indexed[i].id) && guard++ < 8) {
+          scrambled = shuffle(indexed);
+        }
+      }
+      setPool(scrambled);
+      setBuilt([]);
+      setCorrect(null);
+    },
+    [tokens]
+  );
+
   useEffect(() => {
-    const indexed = cleanTokens.map((w, idx) => ({ id: `${w}-${idx}`, word: w }));
-    // Shuffle deterministic or pseudo-random
-    const shuffled = [...indexed].sort(() => Math.random() - 0.5);
-    setAvailableWords(shuffled);
-    setSelectedWords([]);
-    setIsCorrect(null);
+    reset();
     setAttempts(0);
-  }, [targetSentence]);
+    setShowHint(false);
+  }, [reset]);
 
-  // Handle clicking an available word chip
-  const handleSelectWord = (item) => {
-    setAvailableWords((prev) => prev.filter((w) => w.id !== item.id));
-    setSelectedWords((prev) => [...prev, item]);
-    setIsCorrect(null);
+  const pick = (item) => {
+    setPool((p) => p.filter((w) => w.id !== item.id));
+    setBuilt((b) => [...b, item]);
+    setCorrect(null);
   };
 
-  // Handle unselecting a word from assembled area
-  const handleDeselectWord = (item) => {
-    setSelectedWords((prev) => prev.filter((w) => w.id !== item.id));
-    setAvailableWords((prev) => [...prev, item]);
-    setIsCorrect(null);
+  const unpick = (item) => {
+    setBuilt((b) => b.filter((w) => w.id !== item.id));
+    setPool((p) => [...p, item]);
+    setCorrect(null);
   };
 
-  // Reset words
-  const handleReset = () => {
-    const indexed = cleanTokens.map((w, idx) => ({ id: `${w}-${idx}`, word: w }));
-    const shuffled = [...indexed].sort(() => Math.random() - 0.5);
-    setAvailableWords(shuffled);
-    setSelectedWords([]);
-    setIsCorrect(null);
-  };
-
-  // Validate assembled sentence
-  const handleCheckAnswer = () => {
-    const assembled = selectedWords.map((w) => w.word).join(' ');
-    const expected = cleanTokens.join(' ');
-    setAttempts((prev) => prev + 1);
-
-    if (assembled === expected) {
-      setIsCorrect(true);
-    } else {
-      setIsCorrect(false);
-    }
-  };
-
-  const handleProceed = () => {
-    if (onComplete) {
-      onComplete({
-        completed: true,
-        correct: true,
-        attempts: attempts || 1,
-      });
-    }
+  const check = () => {
+    const next = attempts + 1;
+    setAttempts(next);
+    const ok = built.map((w) => w.word).join(' ') === tokens.join(' ');
+    setCorrect(ok);
+    if (!ok && next >= 2) setShowHint(true);
   };
 
   return (
-    <div className="game-activity-card">
-      <div className="game-header">
-        <div className="game-badge">
-          <Sparkles size={16} />
-          <span>Activity 2: Word-Order Scramble</span>
+    <Card className="p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <Badge tone="brand">Activity 2 of 3</Badge>
+          <h2 className="mt-2 font-display text-lg font-bold text-ink">Put the words in order</h2>
+          <p className="mt-0.5 text-[13px] text-ink-soft">
+            Tap the words below to rebuild the sentence you just practised.
+          </p>
         </div>
-        <p className="game-instruction">
-          Arrange the words in the correct order to form the target sentence:
-        </p>
+        {attempts > 0 && (
+          <span className="tabular font-mono text-[11px] text-ink-faint">
+            {attempts} attempt{attempts > 1 ? 's' : ''}
+          </span>
+        )}
       </div>
 
-      {/* Assembly Area */}
-      <div className={`assembled-area ${isCorrect === true ? 'correct' : isCorrect === false ? 'incorrect' : ''}`}>
-        {selectedWords.length === 0 ? (
-          <span className="placeholder-text">Tap the word chips below to build your sentence...</span>
+      {/* Build area */}
+      <div
+        className={cx(
+          'mt-5 min-h-[92px] rounded-xl border-2 border-dashed p-4 transition-colors duration-200',
+          correct === true
+            ? 'border-positive bg-positive-soft'
+            : correct === false
+              ? 'border-critical bg-critical-soft'
+              : 'border-line-strong bg-surface-inset'
+        )}
+      >
+        {built.length === 0 ? (
+          <p className="grid h-full min-h-[60px] place-items-center text-center text-[13px] text-ink-faint">
+            Your sentence appears here
+          </p>
         ) : (
-          <div className="chips-container">
-            {selectedWords.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="word-chip assembled"
-                onClick={() => handleDeselectWord(item)}
-              >
-                {item.word}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2">
+            <AnimatePresence mode="popLayout">
+              {built.map((item) => (
+                <motion.button
+                  key={item.id}
+                  layout
+                  initial={{ scale: 0.85 }}
+                  animate={{ scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.85 }}
+                  transition={{ duration: 0.16 }}
+                  type="button"
+                  onClick={() => unpick(item)}
+                  className="min-h-11 cursor-pointer rounded-lg border border-brand bg-surface px-3.5 text-[15px] font-semibold text-ink transition-colors hover:bg-surface-hover"
+                >
+                  {item.word}
+                </motion.button>
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </div>
 
-      {/* Available Chips Area */}
-      <div className="available-chips-area">
-        {availableWords.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className="word-chip available"
-            onClick={() => handleSelectWord(item)}
-          >
-            {item.word}
-          </button>
-        ))}
+      {/* Word pool */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <AnimatePresence mode="popLayout">
+          {pool.map((item) => (
+            <motion.button
+              key={item.id}
+              layout
+              initial={{ scale: 0.85 }}
+              animate={{ scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              transition={{ duration: 0.16 }}
+              type="button"
+              onClick={() => pick(item)}
+              className="min-h-11 cursor-pointer rounded-lg border border-line-strong bg-surface px-3.5 text-[15px] font-semibold text-ink-soft transition-[background-color,border-color,color] hover:border-brand hover:bg-surface-hover hover:text-ink"
+            >
+              {item.word}
+            </motion.button>
+          ))}
+        </AnimatePresence>
       </div>
 
-      {/* Feedback banner */}
-      {isCorrect === true && (
-        <div className="feedback-banner success">
-          <CheckCircle2 size={20} className="banner-icon" />
-          <div className="banner-text">
-            <strong>Excellent! Correct word order!</strong>
-            <p>You reconstructed the phrase perfectly.</p>
-          </div>
-        </div>
+      {/* Feedback */}
+      {correct === true && (
+        <Alert tone="positive" icon={CheckCircle2} title="That's the right order" className="mt-4">
+          You rebuilt the phrase exactly.
+        </Alert>
+      )}
+      {correct === false && (
+        <Alert tone="critical" icon={AlertCircle} title="Not quite yet" className="mt-4">
+          Tap a word in your sentence to send it back, then try a different order.
+        </Alert>
+      )}
+      {showHint && correct !== true && (
+        <Alert tone="caution" icon={Lightbulb} title="Hint" className="mt-2">
+          The sentence starts with “{tokens[0]}”.
+        </Alert>
       )}
 
-      {isCorrect === false && (
-        <div className="feedback-banner error">
-          <AlertCircle size={20} className="banner-icon" />
-          <div className="banner-text">
-            <strong>Not quite right yet.</strong>
-            <p>Try rearranging the order or tap Reset to start over.</p>
-          </div>
-        </div>
-      )}
+      {/* Actions */}
+      <div className="mt-5 flex flex-col gap-2 border-t border-line pt-5 sm:flex-row sm:justify-between">
+        <Button variant="ghost" onClick={reset} disabled={built.length === 0 || isSubmitting}>
+          <RotateCcw className="size-4" aria-hidden="true" />
+          Reset
+        </Button>
 
-      {/* Action Buttons */}
-      <div className="game-actions">
-        <button
-          type="button"
-          className="btn-reset"
-          onClick={handleReset}
-          disabled={selectedWords.length === 0 || isSubmitting}
-        >
-          <RotateCcw size={16} />
-          <span>Reset</span>
-        </button>
-
-        {isCorrect !== true ? (
-          <button
-            type="button"
-            className="btn-check"
-            onClick={handleCheckAnswer}
-            disabled={selectedWords.length === 0 || isSubmitting}
+        {correct === true ? (
+          <Button
+            onClick={() => onComplete?.({ completed: true, correct: true, attempts: attempts || 1 })}
+            loading={isSubmitting}
           >
-            <span>Check Order</span>
-          </button>
+            Continue to quiz
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Button>
         ) : (
-          <button
-            type="button"
-            className="btn-proceed"
-            onClick={handleProceed}
-            disabled={isSubmitting}
-          >
-            <span>Continue to Quiz</span>
-            <ArrowRight size={18} />
-          </button>
+          <Button onClick={check} disabled={pool.length > 0 || built.length === 0 || isSubmitting}>
+            Check order
+          </Button>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

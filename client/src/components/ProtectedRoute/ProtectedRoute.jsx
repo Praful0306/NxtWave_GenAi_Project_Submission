@@ -1,26 +1,22 @@
 import { Navigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
-import { Loader2 } from 'lucide-react';
+import { BrandGlyph } from '../Brandmark';
 
-/**
- * ProtectedRoute — wraps authenticated routes.
- * Redirects to /login if no valid token.
- * Shows a loading spinner while checking auth.
- */
 export default function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore();
 
   if (isLoading) {
     return (
-      <div className="auth-container">
-        <Loader2 className="animate-spin" size={32} style={{ color: 'var(--color-primary-500)' }} />
+      <div className="grid min-h-screen place-items-center bg-canvas" role="status" aria-label="Checking your session">
+        <div className="flex flex-col items-center gap-4">
+          <BrandGlyph className="size-12 animate-pulse" />
+          <p className="text-sm text-ink-faint">Checking your session…</p>
+        </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   return children;
 }

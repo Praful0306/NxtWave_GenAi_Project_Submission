@@ -1,188 +1,178 @@
-import React, { useState } from 'react';
-import { HelpCircle, CheckCircle2, XCircle, Award, ArrowRight, Flame } from 'lucide-react';
-import './QuizActivity.css';
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Check, X, ArrowRight, Trophy } from 'lucide-react';
+import { Card, Button, Badge, ProgressBar, cx } from '../ui';
 
 export default function QuizActivity({
   quiz = [],
   dayNumber,
-  targetSentence,
+  targetSentence = '',
   onComplete,
   isSubmitting = false,
 }) {
-  // Fallback default quiz if roadmap day quiz array is empty
-  const questions =
-    quiz && quiz.length > 0
-      ? quiz
-      : [
-          {
-            question: `What is the key phrase practiced in Day ${dayNumber}?`,
-            options: [
-              targetSentence,
-              'A different greeting',
-              'An unrelated sentence',
-              'None of the above',
-            ],
-            correctAnswerIndex: 0,
-          },
-          {
-            question: 'How would you use this phrase in a daily conversation?',
-            options: [
-              'When formally introducing yourself or greeting someone',
-              'Only when leaving a room',
-              'Never in polite conversation',
-              'Only in written letters',
-            ],
-            correctAnswerIndex: 0,
-          },
-        ];
+  // The roadmap normally supplies the quiz; this keeps the day completable if it didn't.
+  const questions = useMemo(() => {
+    if (quiz?.length) return quiz;
+    return [
+      {
+        question: `Which phrase did you practise on day ${dayNumber}?`,
+        options: [targetSentence, 'A different greeting', 'An unrelated sentence', 'None of these'],
+        correctAnswerIndex: 0,
+      },
+      {
+        question: 'When would you use this phrase?',
+        options: [
+          'Greeting someone or introducing yourself',
+          'Only when leaving a room',
+          'Only in written letters',
+          'Never in polite conversation',
+        ],
+        correctAnswerIndex: 0,
+      },
+    ];
+  }, [quiz, dayNumber, targetSentence]);
 
-  const [currentQIndex, setCurrentQIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState({});
-  const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
-  const [quizFinished, setQuizFinished] = useState(false);
-  const [resultData, setResultData] = useState(null);
+  const [index, setIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [revealed, setRevealed] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [score, setScore] = useState(0);
 
-  const currentQ = questions[currentQIndex];
-  const userChoice = selectedAnswers[currentQIndex];
+  const question = questions[index];
+  const choice = answers[index];
+  const isLast = index === questions.length - 1;
 
-  const handleSelectOption = (idx) => {
-    if (isAnswerSubmitted) return;
-    setSelectedAnswers((prev) => ({ ...prev, [currentQIndex]: idx }));
-  };
-
-  const handleCheckAnswer = () => {
-    setIsAnswerSubmitted(true);
-  };
-
-  const handleNextQuestion = () => {
-    if (currentQIndex < questions.length - 1) {
-      setCurrentQIndex((prev) => prev + 1);
-      setIsAnswerSubmitted(false);
-    } else {
-      // Calculate final score
-      let correctCount = 0;
-      const answersArray = questions.map((q, idx) => {
-        const isRight = selectedAnswers[idx] === q.correctAnswerIndex;
-        if (isRight) correctCount++;
-        return {
-          questionIndex: idx,
-          selected: selectedAnswers[idx],
-          correct: q.correctAnswerIndex,
-          isRight,
-        };
-      });
-
-      const scorePercent = Math.round((correctCount / questions.length) * 100);
-      setQuizFinished(true);
-      setResultData({
-        answers: answersArray,
-        score: scorePercent,
-        totalQuestions: questions.length,
-      });
-
-      if (onComplete) {
-        onComplete({
-          answers: answersArray,
-          score: scorePercent,
-          totalQuestions: questions.length,
-        });
-      }
+  const advance = () => {
+    if (!isLast) {
+      setIndex((i) => i + 1);
+      setRevealed(false);
+      return;
     }
+
+    let right = 0;
+    const summary = questions.map((q, i) => {
+      const ok = answers[i] === q.correctAnswerIndex;
+      if (ok) right += 1;
+      return { questionIndex: i, selected: answers[i], correct: q.correctAnswerIndex, isRight: ok };
+    });
+
+    const pct = Math.round((right / questions.length) * 100);
+    setScore(pct);
+    setFinished(true);
+    onComplete?.({ answers: summary, score: pct, totalQuestions: questions.length });
   };
+
+  if (finished) {
+    return (
+      <Card className="p-8 text-center sm:p-10">
+        <motion.span
+          initial={{ scale: 0.7 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+          className="mx-auto grid size-16 place-items-center rounded-2xl bg-accent-soft text-accent-softfg"
+        >
+          <Trophy className="size-8" aria-hidden="true" />
+        </motion.span>
+
+        <h2 className="mt-5 font-display text-2xl font-bold text-ink">Quiz complete</h2>
+        <p className="mt-1.5 text-[15px] text-ink-soft">
+          You scored <span className="tabular font-bold text-ink">{score}%</span> — day {dayNumber} is done.
+        </p>
+
+        <div className="mx-auto mt-5 max-w-xs">
+          <ProgressBar value={score} tone={score >= 60 ? 'positive' : 'accent'} label="Quiz score" />
+        </div>
+      </Card>
+    );
+  }
 
   return (
-    <div className="quiz-activity-card">
-      <div className="quiz-header">
-        <div className="quiz-badge">
-          <HelpCircle size={16} />
-          <span>Activity 3: Recall Quiz</span>
-        </div>
-        <span className="quiz-progress-indicator">
-          Question {currentQIndex + 1} of {questions.length}
+    <Card className="p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Badge tone="brand">Activity 3 of 3</Badge>
+        <span className="tabular font-mono text-[11px] text-ink-faint">
+          {index + 1} / {questions.length}
         </span>
       </div>
 
-      {!quizFinished ? (
-        <div className="quiz-body">
-          <h3 className="quiz-question-text">{currentQ.question}</h3>
+      <ProgressBar value={((index + 1) / questions.length) * 100} className="mt-3" label="Quiz progress" />
 
-          <div className="options-list">
-            {currentQ.options.map((opt, idx) => {
-              const isSelected = userChoice === idx;
-              const isCorrectOption = idx === currentQ.correctAnswerIndex;
-              let optionClass = 'option-item';
+      <>
+        <motion.div
+          key={index}
+          initial={{ x: 16 }}
+          animate={{ x: 0 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <h2 className="mt-5 font-display text-lg font-bold leading-snug text-ink">{question.question}</h2>
 
-              if (isSelected) optionClass += ' selected';
-              if (isAnswerSubmitted) {
-                if (isCorrectOption) optionClass += ' correct';
-                else if (isSelected && !isCorrectOption) optionClass += ' incorrect';
-              }
+          <div role="radiogroup" aria-label="Answer options" className="mt-4 space-y-2">
+            {question.options.map((opt, i) => {
+              const selected = choice === i;
+              const isAnswer = i === question.correctAnswerIndex;
+              const showRight = revealed && isAnswer;
+              const showWrong = revealed && selected && !isAnswer;
 
               return (
                 <button
-                  key={idx}
+                  key={i}
                   type="button"
-                  className={optionClass}
-                  onClick={() => handleSelectOption(idx)}
-                  disabled={isAnswerSubmitted}
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={revealed}
+                  onClick={() => !revealed && setAnswers((a) => ({ ...a, [index]: i }))}
+                  className={cx(
+                    'flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition-[border-color,background-color] duration-200',
+                    !revealed && 'cursor-pointer',
+                    showRight
+                      ? 'border-positive bg-positive-soft'
+                      : showWrong
+                        ? 'border-critical bg-critical-soft'
+                        : selected
+                          ? 'border-brand bg-brand-soft'
+                          : 'border-line bg-surface hover:border-line-strong hover:bg-surface-hover'
+                  )}
                 >
-                  <span className="option-marker">{String.fromCharCode(65 + idx)}</span>
-                  <span className="option-text">{opt}</span>
-                  {isAnswerSubmitted && isCorrectOption && (
-                    <CheckCircle2 size={18} className="status-icon success" />
-                  )}
-                  {isAnswerSubmitted && isSelected && !isCorrectOption && (
-                    <XCircle size={18} className="status-icon error" />
-                  )}
+                  <span
+                    className={cx(
+                      'grid size-7 shrink-0 place-items-center rounded-lg font-mono text-[12px] font-bold',
+                      showRight
+                        ? 'bg-positive text-white'
+                        : showWrong
+                          ? 'bg-critical text-white'
+                          : selected
+                            ? 'bg-brand-700 text-white dark:bg-brand-500 dark:text-brand-950'
+                            : 'bg-surface-inset text-ink-faint'
+                    )}
+                  >
+                    {showRight ? (
+                      <Check className="size-4" aria-hidden="true" />
+                    ) : showWrong ? (
+                      <X className="size-4" aria-hidden="true" />
+                    ) : (
+                      String.fromCharCode(65 + i)
+                    )}
+                  </span>
+                  <span className="text-[14px] font-medium text-ink">{opt}</span>
                 </button>
               );
             })}
           </div>
+        </motion.div>
+      </>
 
-          <div className="quiz-actions">
-            {!isAnswerSubmitted ? (
-              <button
-                type="button"
-                className="btn-quiz-check"
-                onClick={handleCheckAnswer}
-                disabled={userChoice === undefined}
-              >
-                <span>Submit Answer</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn-quiz-next"
-                onClick={handleNextQuestion}
-                disabled={isSubmitting}
-              >
-                <span>
-                  {currentQIndex < questions.length - 1 ? 'Next Question' : 'Complete Session'}
-                </span>
-                <ArrowRight size={18} />
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="quiz-completion-view">
-          <div className="celebration-icon-wrapper">
-            <Award size={48} className="celebration-icon" />
-          </div>
-          <h2>Session Completed!</h2>
-          <p className="congrats-text">
-            You scored <strong>{resultData?.score}%</strong> on the recall quiz and unlocked the next day!
-          </p>
-
-          <div className="streak-callout">
-            <Flame size={24} className="flame-icon animate-pulse" />
-            <div className="streak-info">
-              <span className="streak-title">Daily Streak Active</span>
-              <span className="streak-sub">Keep practicing daily to grow your streak!</span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <div className="mt-5 flex justify-end border-t border-line pt-5">
+        {revealed ? (
+          <Button onClick={advance} loading={isSubmitting}>
+            {isLast ? 'Finish session' : 'Next question'}
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Button>
+        ) : (
+          <Button onClick={() => setRevealed(true)} disabled={choice === undefined}>
+            Check answer
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }

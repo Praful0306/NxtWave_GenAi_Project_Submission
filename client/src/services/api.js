@@ -6,8 +6,16 @@ import useAuthStore from '../store/authStore';
  * Base URL points to the Node backend.
  * Automatically attaches Bearer token from auth store.
  */
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+/**
+ * OAuth is a full-page redirect to server-node, so it can't go through axios.
+ * Derived from the same base URL — hardcoding localhost here breaks production.
+ */
+export const oauthUrl = (provider) => `${API_BASE_URL}/auth/${provider}`;
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: API_BASE_URL,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',

@@ -1,244 +1,313 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, Lock, Play, HelpCircle, BookOpen, MessageSquare, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, Badge, Button, ProgressBar, cx } from '../ui';
+import {
+  Check,
+  Lock,
+  Play,
+  ChevronDown,
+  MessageSquare,
+  ListChecks,
+  BookOpen,
+  X,
+  MapPin,
+} from 'lucide-react';
+
+function DayCard({ day, state, onOpen, onStart }) {
+  const isDone = state === 'done';
+  const isToday = state === 'today';
+  const isLocked = state === 'locked';
+
+  return (
+    <motion.div
+      initial={{ y: 8 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.25 }}
+      className={cx(
+        'group relative rounded-xl border p-4 transition-[border-color,box-shadow] duration-200',
+        isToday
+          ? 'border-brand bg-brand-soft shadow-sm'
+          : isDone
+            ? 'border-line bg-surface'
+            : isLocked
+              ? 'border-line bg-surface-inset'
+              : 'border-line bg-surface hover:border-line-strong'
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span
+            className={cx(
+              'tabular grid size-7 place-items-center rounded-lg font-mono text-[11px] font-bold',
+              isDone
+                ? 'bg-positive-soft text-positive'
+                : isToday
+                  ? 'bg-brand-700 text-white dark:bg-brand-500 dark:text-brand-950'
+                  : 'bg-surface-inset text-ink-faint'
+            )}
+          >
+            {isDone ? <Check className="size-3.5" aria-hidden="true" /> : day.dayNumber}
+          </span>
+          {isToday && <Badge tone="accent">Today</Badge>}
+          {isLocked && <Lock className="size-3.5 text-ink-faint" aria-hidden="true" />}
+        </div>
+
+        {!isLocked && (
+          <button
+            type="button"
+            onClick={() => onStart(day.dayNumber)}
+            aria-label={`Practise day ${day.dayNumber}`}
+            className={cx(
+              'grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg transition-colors',
+              isToday
+                ? 'bg-brand-700 text-white hover:bg-brand-800 dark:bg-brand-500 dark:text-brand-950 dark:hover:bg-brand-400'
+                : 'bg-surface-inset text-ink-soft hover:bg-surface-hover hover:text-ink'
+            )}
+          >
+            <Play className="size-3.5 fill-current" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onOpen(day)}
+        className="mt-3 block w-full cursor-pointer text-left"
+      >
+        <h4 className="line-clamp-1 text-sm font-bold text-ink">{day.topic}</h4>
+        <p className="mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-ink-soft">
+          {day.scenario || day.grammarFocus}
+        </p>
+      </button>
+
+      <div className="mt-3 flex items-center gap-3 border-t border-line pt-2.5 font-mono text-[11px] text-ink-faint">
+        <span className="inline-flex items-center gap-1">
+          <MessageSquare className="size-3" aria-hidden="true" />
+          {day.targetPhrases?.length || 0}
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <ListChecks className="size-3" aria-hidden="true" />
+          {day.quiz?.length || 0}
+        </span>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function RoadmapTimeline({ roadmap, currentDayNumber = 1, languageCode }) {
   const navigate = useNavigate();
-  const [expandedWeek, setExpandedWeek] = useState(1);
-  const [selectedDay, setSelectedDay] = useState(null);
+  const firstIncompleteWeek =
+    roadmap?.weeks?.find((w) => (w.days || []).some((d) => !d.completedAt))?.weekNumber ?? 1;
+  const [openWeek, setOpenWeek] = useState(firstIncompleteWeek);
+  const [preview, setPreview] = useState(null);
 
-  if (!roadmap || !roadmap.weeks || roadmap.weeks.length === 0) {
-    return (
-      <div className="p-12 text-center text-slate-400 bg-slate-900/60 rounded-3xl border border-slate-800">
-        No roadmap generated yet. Complete onboarding to generate your curriculum.
-      </div>
-    );
-  }
+  if (!roadmap?.weeks?.length) return null;
 
-  const startPractice = (dayNum) => {
-    navigate(`/practice/${languageCode}?day=${dayNum}`);
+  const startPractice = () => navigate(`/practice/${languageCode}`);
+
+  const allDays = roadmap.weeks.flatMap((w) => w.days || []);
+  const doneCount = allDays.filter((d) => d.completedAt).length;
+  const percent = allDays.length ? Math.round((doneCount / allDays.length) * 100) : 0;
+
+  const stateFor = (day) => {
+    if (day.completedAt) return 'done';
+    if (day.dayNumber === currentDayNumber) return 'today';
+    if (day.dayNumber > currentDayNumber) return 'locked';
+    return 'open';
   };
 
   return (
-    <div className="space-y-6">
-      {/* Roadmap Header Summary */}
-      <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-xl relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-semibold mb-2 border border-indigo-500/20">
-              <Sparkles className="w-3.5 h-3.5" /> Generated by {roadmap.generatedBy || 'Indic LLM'}
+    <div className="space-y-4">
+      {/* Summary */}
+      <Card className="grain overflow-hidden">
+        <div className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="brand">{roadmap.generatedBy || 'AI generated'}</Badge>
+              <Badge tone="neutral">{roadmap.startLevel || 'Basic'}</Badge>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Personalized {roadmap.languageCode} Curriculum
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              {roadmap.totalDays} Days • Level: <span className="text-indigo-400 font-semibold">{roadmap.startLevel}</span> • {roadmap.weeks.length} Structured Weeks
-            </p>
+            <h2 className="font-display text-lg font-bold text-ink">
+              <span className="tabular">{roadmap.totalDays}</span>{' '}
+              {roadmap.totalDays === 1 ? 'day' : 'days'} ·{' '}
+              <span className="tabular">{roadmap.weeks.length}</span>{' '}
+              {roadmap.weeks.length === 1 ? 'week' : 'weeks'}
+            </h2>
+            <div className="max-w-xs space-y-1.5">
+              <ProgressBar value={percent} label="Roadmap completion" />
+              <p className="text-[12px] text-ink-soft">
+                <span className="tabular font-bold text-ink">{doneCount}</span> of{' '}
+                <span className="tabular">{allDays.length}</span> days complete
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => startPractice(currentDayNumber)}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-sm transition-all shadow-xl shadow-indigo-600/30 cursor-pointer"
-            >
-              <Play className="w-4 h-4 fill-white" /> Start Day {currentDayNumber} Practice
-            </button>
-          </div>
+          <Button size="lg" onClick={startPractice} className="shrink-0">
+            <Play className="size-4 fill-current" aria-hidden="true" />
+            Continue day {currentDayNumber}
+          </Button>
         </div>
-      </div>
+      </Card>
 
-      {/* Week Accordion & Day Timeline */}
-      <div className="space-y-4">
+      {/* Weeks */}
+      <div className="space-y-3">
         {roadmap.weeks.map((week) => {
-          const isExpanded = expandedWeek === week.weekNumber;
-          const weekDays = week.days || [];
-          const completedInWeek = weekDays.filter((d) => d.completedAt).length;
+          const days = week.days || [];
+          const done = days.filter((d) => d.completedAt).length;
+          const expanded = openWeek === week.weekNumber;
 
           return (
-            <div
-              key={week.weekNumber}
-              className="bg-slate-900/80 border border-slate-800/80 rounded-3xl overflow-hidden backdrop-blur-xl transition-all"
-            >
-              {/* Week Accordion Header */}
+            <Card key={week.weekNumber} className="overflow-hidden">
               <button
                 type="button"
-                onClick={() => setExpandedWeek(isExpanded ? null : week.weekNumber)}
-                className="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-slate-800/30 transition cursor-pointer"
+                onClick={() => setOpenWeek(expanded ? null : week.weekNumber)}
+                aria-expanded={expanded}
+                className="flex w-full cursor-pointer items-center justify-between gap-4 p-4 text-left transition-colors hover:bg-surface-hover sm:p-5"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center text-sm">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="tabular grid size-10 shrink-0 place-items-center rounded-xl bg-surface-inset font-mono text-[13px] font-bold text-ink-soft">
                     W{week.weekNumber}
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
-                      Week {week.weekNumber}
-                    </div>
-                    <div className="text-base sm:text-lg font-bold text-white mt-0.5">
-                      {week.theme}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate font-display text-[15px] font-bold text-ink">{week.theme}</div>
+                    <div className="tabular text-[12px] text-ink-faint">
+                      {done} / {days.length} days complete
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <span className="text-xs font-mono text-slate-400 hidden sm:inline-block">
-                    {completedInWeek}/{weekDays.length} Completed
-                  </span>
-                  {isExpanded ? (
-                    <ChevronDown className="w-5 h-5 text-slate-400" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                <div className="flex shrink-0 items-center gap-3">
+                  {done === days.length && days.length > 0 && (
+                    <Badge tone="positive" icon={Check}>
+                      Done
+                    </Badge>
                   )}
+                  <motion.span animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                    <ChevronDown className="size-4 text-ink-faint" aria-hidden="true" />
+                  </motion.span>
                 </div>
               </button>
 
-              {/* Day Cards in Week */}
-              {isExpanded && (
-                <div className="p-5 sm:p-6 pt-0 border-t border-slate-800/60 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {weekDays.map((day) => {
-                    const isCompleted = !!day.completedAt;
-                    const isCurrent = day.dayNumber === currentDayNumber;
-                    const isLocked = day.dayNumber > currentDayNumber && !isCompleted;
-
-                    return (
-                      <div
-                        key={day.dayNumber}
-                        onClick={() => setSelectedDay(day)}
-                        className={`p-5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden ${
-                          isCurrent
-                            ? 'bg-indigo-600/15 border-indigo-500/80 ring-2 ring-indigo-500/20 shadow-lg shadow-indigo-500/10'
-                            : isCompleted
-                            ? 'bg-emerald-950/15 border-emerald-500/40 hover:border-emerald-500/60'
-                            : isLocked
-                            ? 'bg-slate-900/40 border-slate-800/60 opacity-75'
-                            : 'bg-slate-800/40 border-slate-700/60 hover:border-slate-600'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold font-mono bg-slate-800 text-indigo-300 border border-slate-700">
-                              Day {day.dayNumber}
-                            </span>
-                            {isCurrent && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                Today
-                              </span>
-                            )}
-                          </div>
-
-                          <div>
-                            {isCompleted ? (
-                              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                            ) : isLocked ? (
-                              <Lock className="w-4 h-4 text-slate-500" />
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  startPractice(day.dayNumber);
-                                }}
-                                className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-md shadow-indigo-600/30"
-                              >
-                                <Play className="w-3.5 h-3.5 fill-white" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <h4 className="text-base font-bold text-white line-clamp-1">{day.topic}</h4>
-                        <p className="text-xs text-slate-400 mt-1 line-clamp-2">{day.scenario}</p>
-
-                        {/* Target phrases & Quiz tags */}
-                        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 font-mono">
-                          <span className="inline-flex items-center gap-1">
-                            <MessageSquare className="w-3.5 h-3.5 text-indigo-400" /> {day.targetPhrases?.length || 0} Phrases
-                          </span>
-                          <span>•</span>
-                          <span className="inline-flex items-center gap-1">
-                            <HelpCircle className="w-3.5 h-3.5 text-amber-400" /> {day.quiz?.length || 0} Quiz Qs
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+              <AnimatePresence initial={false}>
+                {expanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid gap-3 border-t border-line p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
+                      {days.map((day) => (
+                        <DayCard
+                          key={day.dayNumber}
+                          day={day}
+                          state={stateFor(day)}
+                          onOpen={setPreview}
+                          onStart={startPractice}
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Card>
           );
         })}
       </div>
 
-      {/* Selected Day Preview Modal */}
-      {selectedDay && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="px-3 py-1 rounded-full text-xs font-bold font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                  Day {selectedDay.dayNumber} Overview
-                </span>
-                <h3 className="text-xl font-bold text-white mt-2">{selectedDay.topic}</h3>
-                <p className="text-xs text-slate-400 mt-1">{selectedDay.scenario}</p>
-              </div>
-              <button
-                onClick={() => setSelectedDay(null)}
-                className="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800 text-sm font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/60">
-                <div className="font-semibold text-indigo-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <MessageSquare className="w-4 h-4" /> Practice Prompt
+      {/* Day preview */}
+      <AnimatePresence>
+        {preview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Day ${preview.dayNumber} preview`}
+            onClick={(e) => e.target === e.currentTarget && setPreview(null)}
+            className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-sand-950/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full max-w-lg rounded-2xl border border-line bg-surface-raised shadow-lg"
+            >
+              <div className="flex items-start justify-between gap-3 border-b border-line p-5">
+                <div className="min-w-0">
+                  <Badge tone="brand">Day {preview.dayNumber}</Badge>
+                  <h3 className="mt-2 font-display text-lg font-bold text-ink">{preview.topic}</h3>
+                  {preview.scenario && (
+                    <p className="mt-1 flex items-start gap-1.5 text-[13px] text-ink-soft">
+                      <MapPin className="mt-0.5 size-3.5 shrink-0 text-accent" aria-hidden="true" />
+                      {preview.scenario}
+                    </p>
+                  )}
                 </div>
-                <div className="text-sm font-semibold text-white">{selectedDay.promptText}</div>
-                {selectedDay.translationEnglish && (
-                  <div className="text-slate-400 mt-1 italic">"{selectedDay.translationEnglish}"</div>
+                <button
+                  type="button"
+                  onClick={() => setPreview(null)}
+                  aria-label="Close"
+                  className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg text-ink-faint transition-colors hover:bg-surface-hover hover:text-ink"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 p-5">
+                <div className="rounded-xl border border-line bg-surface-inset p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                    Phrase to speak
+                  </p>
+                  <p className="mt-1.5 font-display text-lg font-bold text-ink">{preview.promptText}</p>
+                  {preview.translationEnglish && (
+                    <p className="mt-1 text-[13px] italic text-ink-soft">“{preview.translationEnglish}”</p>
+                  )}
+                </div>
+
+                {preview.grammarFocus && (
+                  <div className="rounded-xl border border-line p-4">
+                    <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                      <BookOpen className="size-3.5" aria-hidden="true" /> Grammar focus
+                    </p>
+                    <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">{preview.grammarFocus}</p>
+                  </div>
+                )}
+
+                {preview.quiz?.length > 0 && (
+                  <div className="rounded-xl border border-line p-4">
+                    <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                      <ListChecks className="size-3.5" aria-hidden="true" /> {preview.quiz.length} quiz questions
+                    </p>
+                    <p className="mt-1.5 text-[13px] text-ink-soft">
+                      Recall check on today’s vocabulary and grammar.
+                    </p>
+                  </div>
                 )}
               </div>
 
-              {selectedDay.grammarFocus && (
-                <div className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/60">
-                  <div className="font-semibold text-amber-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4" /> Grammar Rule
-                  </div>
-                  <div className="text-slate-300 leading-relaxed">{selectedDay.grammarFocus}</div>
-                </div>
-              )}
-
-              {selectedDay.quiz && selectedDay.quiz.length > 0 && (
-                <div className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/60">
-                  <div className="font-semibold text-emerald-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <HelpCircle className="w-4 h-4" /> Daily Multiple Choice Quiz ({selectedDay.quiz.length} Questions)
-                  </div>
-                  <div className="text-slate-400 font-sans">
-                    Includes interactive recall questions testing vocabulary and grammar retention.
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-              <button
-                onClick={() => setSelectedDay(null)}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedDay(null);
-                  startPractice(selectedDay.dayNumber);
-                }}
-                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/30"
-              >
-                Start Practice Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex justify-end gap-2 border-t border-line p-4">
+                <Button variant="ghost" onClick={() => setPreview(null)}>
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    setPreview(null);
+                    startPractice();
+                  }}
+                >
+                  Start practice
+                  <Play className="size-3.5 fill-current" aria-hidden="true" />
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

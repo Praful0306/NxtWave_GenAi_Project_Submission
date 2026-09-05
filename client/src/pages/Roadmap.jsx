@@ -1,69 +1,106 @@
-import React, { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell/AppShell';
 import RoadmapTimeline from '../components/RoadmapTimeline/RoadmapTimeline';
-import { useLanguageStore, SUPPORTED_LANGUAGES } from '../store/languageStore';
-import { Loader2, ArrowLeft, Plus } from 'lucide-react';
+import { useLanguageStore, getLanguageMeta } from '../store/languageStore';
+import {
+  Button,
+  Alert,
+  LoadingState,
+  EmptyState,
+  PageHeader,
+  Eyebrow,
+  cx,
+} from '../components/ui';
+import { ArrowLeft, Map, TrendingUp, AlertCircle, Play } from 'lucide-react';
 
 export default function Roadmap() {
-  const { languageCode } = useParams();
+  const { languageCode = 'kn-IN' } = useParams();
   const navigate = useNavigate();
-  const { currentRoadmap, fetchRoadmap, isLoading, error } = useLanguageStore();
+  const { currentRoadmap, languages, fetchRoadmap, isLoading, error } = useLanguageStore();
 
-  const activeLang = languageCode || 'kn-IN';
-  const langMeta = SUPPORTED_LANGUAGES.find((l) => l.code === activeLang) || { name: activeLang };
+  const meta = getLanguageMeta(languageCode);
 
   useEffect(() => {
-    if (activeLang) {
-      fetchRoadmap(activeLang);
-    }
-  }, [activeLang]);
+    fetchRoadmap(languageCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [languageCode]);
+
+  const enrollment = languages.find((l) => l.languageCode === languageCode);
+
+  // First day without a completedAt is the unlocked day — falls back to the
+  // enrollment's own counter, then day 1.
+  const currentDay = useMemo(() => {
+    const days = currentRoadmap?.weeks?.flatMap((w) => w.days || []) ?? [];
+    const next = days.find((d) => !d.completedAt);
+    return next?.dayNumber ?? enrollment?.currentDayNumber ?? 1;
+  }, [currentRoadmap, enrollment]);
+
+  const roadmapMatchesRoute = currentRoadmap?.languageCode === languageCode;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <Navbar />
+    <AppShell className="space-y-6">
+      <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="-ml-3">
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        Dashboard
+      </Button>
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-8 py-8 space-y-6">
-        {/* Navigation Breadcrumb */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to Multi-Language Dashboard
-          </button>
+      <PageHeader
+        eyebrow={
+          <Eyebrow icon={Map}>
+            {meta.nativeName || meta.name} · <span className="font-mono">{languageCode}</span>
+          </Eyebrow>
+        }
+        title={
+          <span className="flex items-center gap-3">
+            <span
+              className={cx('grid size-11 place-items-center rounded-xl font-serif text-xl leading-none', meta.tile)}
+              aria-hidden="true"
+            >
+              {meta.script}
+            </span>
+            {meta.name} roadmap
+          </span>
+        }
+        description="Your day-by-day plan. Days unlock as you finish the one before."
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => navigate(`/progress/${languageCode}`)}>
+              <TrendingUp className="size-4" aria-hidden="true" />
+              Progress
+            </Button>
+            <Button size="sm" onClick={() => navigate(`/practice/${languageCode}`)}>
+              <Play className="size-3.5 fill-current" aria-hidden="true" />
+              Practise
+            </Button>
+          </>
+        }
+      />
 
-          <button
-            onClick={() => navigate('/onboarding')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition"
-          >
-            <Plus className="w-3.5 h-3.5" /> Add Language
-          </button>
-        </div>
+      {error && (
+        <Alert tone="critical" icon={AlertCircle} title="Couldn’t load this roadmap">
+          {error}
+        </Alert>
+      )}
 
-        {/* Loading / Error States */}
-        {isLoading && !currentRoadmap && (
-          <div className="p-20 text-center flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-            <p className="text-slate-400 text-sm">Loading your {langMeta.name} curriculum...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="p-6 rounded-3xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Roadmap Timeline */}
-        {currentRoadmap && (
-          <RoadmapTimeline
-            roadmap={currentRoadmap}
-            currentDayNumber={1}
-            languageCode={activeLang}
+      {isLoading && !roadmapMatchesRoute ? (
+        <LoadingState label={`Loading your ${meta.name} plan…`} />
+      ) : roadmapMatchesRoute ? (
+        <RoadmapTimeline
+          roadmap={currentRoadmap}
+          currentDayNumber={currentDay}
+          languageCode={languageCode}
+        />
+      ) : (
+        !error && (
+          <EmptyState
+            icon={Map}
+            title="No roadmap yet"
+            description={`You haven’t set up ${meta.name} yet. It takes three questions.`}
+            action={<Button onClick={() => navigate('/onboarding')}>Set up {meta.name}</Button>}
           />
-        )}
-      </main>
-    </div>
+        )
+      )}
+    </AppShell>
   );
 }

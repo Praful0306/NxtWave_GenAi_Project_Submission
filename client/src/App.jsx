@@ -1,30 +1,41 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import useAuthStore from './store/authStore';
 import useThemeStore from './store/themeStore';
-
-import AppShell from './components/AppShell/AppShell';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import { BrandGlyph } from './components/Brandmark';
 
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import VerifyEmail from './pages/VerifyEmail';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import OAuthCallback from './pages/OAuthCallback';
-import Onboarding from './pages/Onboarding';
-import Dashboard from './pages/Dashboard';
-import Roadmap from './pages/Roadmap';
-import Progress from './pages/Progress';
-import Practice from './pages/Practice';
-import Paywall from './pages/Paywall';
-import Settings from './pages/Settings';
-import NotFound from './pages/NotFound';
+// Routes are split so a learner opening /practice doesn't download the landing
+// page's 3D hero or the charting library used only by /progress.
+const Landing = lazy(() => import('./pages/Landing'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const OAuthCallback = lazy(() => import('./pages/OAuthCallback'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Roadmap = lazy(() => import('./pages/Roadmap'));
+const Progress = lazy(() => import('./pages/Progress'));
+const Practice = lazy(() => import('./pages/Practice'));
+const Paywall = lazy(() => import('./pages/Paywall'));
+const Settings = lazy(() => import('./pages/Settings'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+
+function RouteFallback() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-canvas" role="status" aria-label="Loading">
+      <BrandGlyph className="size-11 animate-pulse" />
+    </div>
+  );
+}
+
+const protect = (element) => <ProtectedRoute>{element}</ProtectedRoute>;
 
 export default function App() {
-  const checkAuth = useAuthStore((state) => state.checkAuth);
-  const initTheme = useThemeStore((state) => state.initTheme);
+  const checkAuth = useAuthStore((s) => s.checkAuth);
+  const initTheme = useThemeStore((s) => s.initTheme);
 
   useEffect(() => {
     initTheme();
@@ -33,84 +44,29 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/oauth-callback" element={<OAuthCallback />} />
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          {/* Public */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/oauth-callback" element={<OAuthCallback />} />
 
-        {/* Onboarding Wizard (Dedicated full-screen flow) */}
-        <Route
-          path="/onboarding"
-          element={
-            <ProtectedRoute>
-              <Onboarding />
-            </ProtectedRoute>
-          }
-        />
+          {/* Authenticated */}
+          <Route path="/onboarding" element={protect(<Onboarding />)} />
+          <Route path="/dashboard" element={protect(<Dashboard />)} />
+          <Route path="/roadmap/:languageCode" element={protect(<Roadmap />)} />
+          <Route path="/progress/:languageCode" element={protect(<Progress />)} />
+          <Route path="/practice/:languageCode" element={protect(<Practice />)} />
+          <Route path="/paywall" element={protect(<Paywall />)} />
+          <Route path="/settings" element={protect(<Settings />)} />
 
-        {/* Authenticated routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/roadmap/:languageCode"
-          element={
-            <ProtectedRoute>
-              <Roadmap />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/progress/:languageCode"
-          element={
-            <ProtectedRoute>
-              <Progress />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/practice/:languageCode"
-          element={
-            <ProtectedRoute>
-              <Practice />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/paywall"
-          element={
-            <ProtectedRoute>
-              <Paywall />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* 404 catch-all */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

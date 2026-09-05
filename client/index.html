@@ -4,11 +4,31 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14120f" media="(prefers-color-scheme: dark)" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <title>VaaniTutor — AI Voice Language Tutor</title>
-    <meta name="description" content="AI-powered voice language tutor for Indian languages including Kannada, Hindi, English, and more. Practice speaking with instant feedback, word games, and quizzes." />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <title>VaaniTutor — Speak Indian languages, from day one</title>
+    <meta
+      name="description"
+      content="A voice-first tutor for Kannada, Hindi, English and eight more Indian languages. Daily speak, game and quiz sessions with instant AI feedback."
+    />
+    <script>
+      // Applies the stored theme before first paint so there's no light flash.
+      (function () {
+        try {
+          var t = localStorage.getItem('vaanitutor_theme') || 'system';
+          var dark =
+            t === 'dark' ||
+            (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
