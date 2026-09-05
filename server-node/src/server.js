@@ -20,10 +20,22 @@ const app = express();
 // Security headers
 app.use(helmet());
 
-// CORS — restricted to FRONTEND_URL
+// CORS — restricted to FRONTEND_URL, which accepts a comma-separated list so the
+// apex domain, its www form and the *.vercel.app fallback can all be allowed
+// during a DNS cutover (spec §13) without redeploying between them.
+const allowedOrigins = String(config.FRONTEND_URL || '')
+  .split(',')
+  .map((o) => o.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: config.FRONTEND_URL,
+    origin(origin, callback) {
+      // No Origin header: same-origin, curl, or a server-to-server call.
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin.replace(/\/$/, ''))) return callback(null, true);
+      return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Key'],

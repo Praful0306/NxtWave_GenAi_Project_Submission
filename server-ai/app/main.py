@@ -30,13 +30,21 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 # ─── CORS — restricted to FRONTEND_URL + server-node ───
+# FRONTEND_URL accepts a comma-separated list so the apex domain, its www form
+# and the *.vercel.app fallback can all be allowed during a DNS cutover
+# (spec §13) without a redeploy between them.
+_allowed_origins = [
+    origin.strip().rstrip("/")
+    for origin in str(settings.FRONTEND_URL or "").split(",")
+    if origin.strip()
+] + [
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.FRONTEND_URL,
-        "http://localhost:5000",
-        "http://127.0.0.1:5000",
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
