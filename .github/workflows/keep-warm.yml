@@ -1,0 +1,45 @@
+name: Keep backends warm
+
+# Free Render instances spin down after ~15 minutes idle and then need roughly
+# 20 seconds to wake, which is what made the first roadmap generation of the day
+# time out. Pinging both health endpoints keeps them resident during the hours
+# people actually use the app.
+#
+# Deliberately NOT 24/7: Render's free plan bills instance-hours against a
+# monthly allowance shared by the whole account, and holding two services awake
+# around the clock would burn through it well before the month ends. This window
+# is about 12 hours a day per service. Check Render → Billing for your actual
+# remaining hours before widening it.
+#
+# Times are UTC. 03:00–14:55 UTC ≈ 08:30–20:25 IST.
+
+on:
+  schedule:
+    - cron: '*/5 3-14 * * *'
+  workflow_dispatch: # lets you wake them by hand before a demo
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping server-node
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 \
+            https://nxtwave-genai-project-submission.onrender.com/api/health)
+          echo "server-node -> HTTP $code"
+          [ "$code" = "200" ] || exit 1
+
+      - name: Ping server-ai
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 \
+            https://server-ai-vt60.onrender.com/health)
+          echo "server-ai -> HTTP $code"
+          [ "$code" = "200" ] || exit 1
+
+      - name: Ping frontend
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
+            https://www.learninglanguagesai.in/)
+          echo "frontend -> HTTP $code"
+          [ "$code" = "200" ] || exit 1
