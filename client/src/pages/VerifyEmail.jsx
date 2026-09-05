@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { MailCheck, AlertCircle, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { MailCheck, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import api from '../services/api';
 
@@ -85,7 +86,7 @@ export default function VerifyEmail() {
 
     try {
       await api.post('/auth/resend-otp', { email });
-      setSuccess('Verification code resent! Please check your email.');
+      setSuccess('Verification code resent! Please check your inbox.');
       setResendCooldown(60);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to resend code.');
@@ -94,11 +95,30 @@ export default function VerifyEmail() {
 
   return (
     <div className="auth-container">
-      <div className="auth-card animate-fade-in" style={{ textAlign: 'center' }}>
-        <div style={{ display: 'inline-flex', padding: '0.75rem', background: 'var(--color-primary-50)', borderRadius: 'var(--radius-xl)', color: 'var(--color-primary-600)', marginBottom: '0.75rem' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="auth-card"
+        style={{ textAlign: 'center' }}
+      >
+        <div
+          style={{
+            display: 'inline-flex',
+            padding: '0.875rem',
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(245, 158, 11, 0.2))',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            borderRadius: '1.25rem',
+            color: '#818cf8',
+            marginBottom: '1rem',
+            boxShadow: '0 8px 16px -4px rgba(99, 102, 241, 0.25)',
+          }}
+        >
           <MailCheck size={32} />
         </div>
-        <h2>Verify your email</h2>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.025em' }}>
+          Verify Your Email
+        </h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.5rem', marginBottom: '1.5rem' }}>
           We sent a 6-digit code to <strong>{email || 'your email'}</strong>. Enter it below to complete registration.
         </p>
@@ -118,14 +138,30 @@ export default function VerifyEmail() {
         )}
 
         {error && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-lg)', color: 'var(--color-error)', marginBottom: '1rem', fontSize: '0.875rem', textAlign: 'left' }}>
-            <AlertCircle size={18} />
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.625rem',
+              padding: '0.875rem 1rem',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: 'var(--radius-xl)',
+              color: '#f87171',
+              marginBottom: '1.25rem',
+              fontSize: '0.875rem',
+              textAlign: 'left',
+            }}
+          >
+            <AlertCircle size={18} style={{ flexShrink: 0 }} />
             <span>{error}</span>
-          </div>
+          </motion.div>
         )}
 
         {success && (
-          <div style={{ padding: '0.75rem 1rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-lg)', color: '#166534', marginBottom: '1rem', fontSize: '0.875rem' }}>
+          <div style={{ padding: '0.75rem 1rem', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-xl)', color: '#34d399', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
             {success}
           </div>
         )}
@@ -143,24 +179,33 @@ export default function VerifyEmail() {
                 onChange={(e) => handleDigitChange(idx, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 style={{
-                  width: '46px',
-                  height: '52px',
+                  width: '48px',
+                  height: '56px',
                   fontSize: '1.5rem',
-                  fontWeight: 700,
+                  fontWeight: 800,
                   textAlign: 'center',
-                  borderRadius: 'var(--radius-lg)',
-                  border: '1.5px solid var(--border-primary)',
-                  background: 'var(--bg-primary)',
+                  borderRadius: 'var(--radius-xl)',
+                  border: digit ? '2px solid #6366f1' : '1.5px solid var(--border-primary)',
+                  background: 'var(--bg-tertiary)',
                   color: 'var(--text-primary)',
                   outline: 'none',
+                  transition: 'all 0.15s ease',
+                  boxShadow: digit ? '0 0 12px rgba(99, 102, 241, 0.3)' : 'none',
                 }}
               />
             ))}
           </div>
 
-          <button type="submit" className="btn-primary" disabled={loading || digits.join('').length !== 6} style={{ width: '100%', marginBottom: '1rem' }}>
-            {loading ? <Loader2 size={18} className="animate-spin" /> : 'Verify and continue'}
-          </button>
+          <motion.button
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            type="submit"
+            className="btn-primary"
+            disabled={loading || digits.join('').length !== 6}
+            style={{ marginBottom: '1.25rem' }}
+          >
+            {loading ? <Loader2 size={18} className="animate-spin" /> : 'Verify & Continue'}
+          </motion.button>
         </form>
 
         <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
@@ -172,19 +217,19 @@ export default function VerifyEmail() {
             style={{
               background: 'none',
               border: 'none',
-              color: resendCooldown > 0 ? 'var(--text-tertiary)' : 'var(--color-primary-600)',
+              color: resendCooldown > 0 ? 'var(--text-tertiary)' : '#818cf8',
               cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
-              fontWeight: 600,
+              fontWeight: 700,
             }}
           >
             {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
           </button>
         </div>
 
-        <p style={{ marginTop: '1.5rem', fontSize: '0.813rem' }}>
+        <p style={{ marginTop: '1.75rem', fontSize: '0.813rem' }}>
           <Link to="/login" style={{ color: 'var(--text-tertiary)' }}>Back to sign in</Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }
