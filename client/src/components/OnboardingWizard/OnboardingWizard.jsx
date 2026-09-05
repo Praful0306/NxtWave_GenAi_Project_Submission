@@ -76,7 +76,15 @@ export default function OnboardingWizard({ onComplete, isModal = false, initialL
       if (onComplete) onComplete(language);
       else navigate(`/roadmap/${language}`);
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'We couldn’t generate your roadmap. Try again.');
+      // A raw axios timeout string ("timeout of 15000ms exceeded") tells a
+      // learner nothing about what to do next.
+      const timedOut = err.code === 'ECONNABORTED' || /timeout/i.test(err.message || '');
+      setError(
+        err.response?.data?.error ||
+          (timedOut
+            ? 'That took longer than expected — the service may have been asleep. Press Generate again; the second attempt is usually quick.'
+            : 'We couldn’t generate your roadmap. Please try again.')
+      );
     }
   };
 
@@ -361,7 +369,7 @@ export default function OnboardingWizard({ onComplete, isModal = false, initialL
                   Back
                 </Button>
                 <Button onClick={finish} loading={isLoading} size="lg">
-                  {isLoading ? 'Building your plan…' : 'Generate my roadmap'}
+                  {isLoading ? 'Building your plan… this can take a minute' : 'Generate my roadmap'}
                   {!isLoading && <Sparkles className="size-4" aria-hidden="true" />}
                 </Button>
               </div>
