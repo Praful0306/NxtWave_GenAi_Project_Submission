@@ -6,6 +6,7 @@ import Brandmark from '../components/Brandmark';
 import ThemeToggle from '../components/ThemeToggle/ThemeToggle';
 import ScriptMarquee from '../components/landing/ScriptMarquee';
 import { Button, Card, Badge, Eyebrow, Skeleton, CountUp, stagger, riseItem } from '../components/ui';
+import { PREMIUM_PRICE_LABEL, PREMIUM_PRICE_SHORT } from '../config/pricing';
 import { ArrowRight, Check, Crown, Mic, Sparkles } from 'lucide-react';
 
 // Landing-only weight (three.js, GSAP/ScrollTrigger, Swiper) — lazily loaded so
@@ -18,7 +19,7 @@ const STATS = [
   { value: '11', label: 'Indian languages' },
   { value: '3', label: 'activities a day' },
   { value: '2', label: 'sessions free' },
-  { value: '₹299', label: 'once, then never' },
+  { value: PREMIUM_PRICE_SHORT, label: 'once, then never' },
 ];
 
 const FREE_FEATURES = ['2 practice sessions', 'Speak, game and quiz', 'One correction per phrase'];
@@ -174,8 +175,7 @@ export default function Landing() {
 
               <span className="text-[12px] font-bold uppercase tracking-wider text-brand">Premium</span>
               <div className="mt-3 flex items-baseline gap-2">
-                <span className="font-display text-3xl font-bold text-ink">₹299</span>
-                <span className="text-[13px] text-ink-faint line-through">₹999</span>
+                <span className="font-display text-3xl font-bold text-ink">{PREMIUM_PRICE_LABEL}</span>
               </div>
 
               <ul className="mt-5 flex-1 space-y-2.5 border-t border-line pt-5 text-[14px] text-ink">

@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { useLanguageStore, getLanguageMeta } from '../store/languageStore';
 import api from '../services/api';
+import { PREMIUM_PRICE_LABEL } from '../config/pricing';
 import {
   Button,
   Card,
@@ -336,7 +337,7 @@ export default function Settings() {
               {!user?.isPremium && (
                 <Button variant="accent" onClick={() => navigate('/paywall')} className="shrink-0">
                   <Crown className="size-4" aria-hidden="true" />
-                  Upgrade — ₹299
+                  Upgrade — {PREMIUM_PRICE_LABEL}
                 </Button>
               )}
             </div>

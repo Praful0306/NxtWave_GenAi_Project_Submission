@@ -5,6 +5,7 @@ import useAuthStore from '../store/authStore';
 import api from '../services/api';
 import AppShell from '../components/AppShell/AppShell';
 import { Button, Card, Badge, Alert, Eyebrow, stagger, riseItem, cx } from '../components/ui';
+import { PREMIUM_PRICE_LABEL } from '../config/pricing';
 import {
   Crown,
   Check,
@@ -176,8 +177,7 @@ export default function Paywall() {
             </div>
 
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="font-display text-3xl font-bold text-ink">₹299</span>
-              <span className="text-[13px] text-ink-faint line-through">₹999</span>
+              <span className="font-display text-3xl font-bold text-ink">{PREMIUM_PRICE_LABEL}</span>
             </div>
             <p className="mt-1 text-[12px] text-ink-soft">Pay once. Yours for good.</p>
 
@@ -200,7 +200,7 @@ export default function Paywall() {
               disabled={done}
               className="mt-6 w-full"
             >
-              {loading ? 'Opening checkout…' : done ? 'Unlocked' : 'Upgrade for ₹299'}
+              {loading ? 'Opening checkout…' : done ? 'Unlocked' : `Upgrade for ${PREMIUM_PRICE_LABEL}`}
               {!loading && !done && <ArrowRight className="size-4" aria-hidden="true" />}
             </Button>
           </Card>
