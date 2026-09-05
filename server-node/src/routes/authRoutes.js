@@ -175,15 +175,15 @@ router.get('/google/callback', async (req, res) => {
   const { code, error: oauthError } = req.query;
 
   if (oauthError || !code) {
-    return res.redirect(`${config.FRONTEND_URL}/login?error=google_auth_failed`);
+    return res.redirect(`${config.FRONTEND_BASE_URL}/login?error=google_auth_failed`);
   }
 
   try {
     const { token } = await oauthService.handleGoogleCallback(code);
-    res.redirect(`${config.FRONTEND_URL}/oauth-callback?token=${token}`);
+    res.redirect(`${config.FRONTEND_BASE_URL}/oauth-callback?token=${token}`);
   } catch (err) {
     console.error('Google OAuth error:', err.message);
-    res.redirect(`${config.FRONTEND_URL}/login?error=google_auth_failed`);
+    res.redirect(`${config.FRONTEND_BASE_URL}/login?error=google_auth_failed`);
   }
 });
 
@@ -213,15 +213,15 @@ router.get('/zoho/callback', async (req, res) => {
   const { code, error: oauthError } = req.query;
 
   if (oauthError || !code) {
-    return res.redirect(`${config.FRONTEND_URL}/login?error=zoho_auth_failed`);
+    return res.redirect(`${config.FRONTEND_BASE_URL}/login?error=zoho_auth_failed`);
   }
 
   try {
     const { token } = await oauthService.handleZohoCallback(code);
-    res.redirect(`${config.FRONTEND_URL}/oauth-callback?token=${token}`);
+    res.redirect(`${config.FRONTEND_BASE_URL}/oauth-callback?token=${token}`);
   } catch (err) {
     console.error('Zoho OAuth error:', err.message);
-    res.redirect(`${config.FRONTEND_URL}/login?error=zoho_auth_failed`);
+    res.redirect(`${config.FRONTEND_BASE_URL}/login?error=zoho_auth_failed`);
   }
 });
 

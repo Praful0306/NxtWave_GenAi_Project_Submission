@@ -16,7 +16,23 @@ const config = {
   INTERNAL_SERVICE_KEY: process.env.INTERNAL_SERVICE_KEY || 'dev-internal-key',
 
   // ─── URLs ───
+  // FRONTEND_URL may hold several comma-separated origins so CORS can accept the
+  // apex domain, its www form and the *.vercel.app fallback at once.
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+
+  // Every allowed origin, for CORS.
+  FRONTEND_ORIGINS: String(process.env.FRONTEND_URL || 'http://localhost:5173')
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter(Boolean),
+
+  // The single canonical origin to send users back to. Redirects must never be
+  // built from the raw list — concatenating it yields a malformed URL.
+  FRONTEND_BASE_URL:
+    String(process.env.FRONTEND_URL || 'http://localhost:5173')
+      .split(',')[0]
+      .trim()
+      .replace(/\/$/, '') || 'http://localhost:5173',
   AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://localhost:8000',
   PORT: parseInt(process.env.PORT, 10) || 5000,
 

@@ -81,19 +81,26 @@ async function createOrder(userId) {
       });
       razorpayOrderId = order.id;
     } catch (err) {
-      console.error('Razorpay API error creating order:', err);
-      // If Razorpay API call fails (e.g. dummy test credentials or network), fallback to a standard order id in non-prod
-      if (process.env.NODE_ENV !== 'production') {
-        razorpayOrderId = `order_${crypto.randomBytes(8).toString('hex')}`;
-      } else {
-        const error = new Error('Failed to create payment order with payment gateway');
-        error.status = 502;
-        throw error;
-      }
+      // Never invent an order id here. Checkout would open against an order
+      // Razorpay has no record of and die with a generic "Payment Failed",
+      // which reads as a broken app rather than a misconfigured gateway.
+      console.error('Razorpay order creation failed:', err?.error?.description || err.message);
+      const error = new Error(
+        'Could not reach the payment gateway. Please try again in a moment.'
+      );
+      error.status = 502;
+      throw error;
     }
   } else {
-    // In local dev/test when no Razorpay keys are configured
-    razorpayOrderId = `order_${crypto.randomBytes(8).toString('hex')}`;
+    // No Razorpay credentials at all — offline/local development. Flag it
+    // explicitly so the client can say so instead of opening a checkout that
+    // cannot possibly succeed.
+    const error = new Error(
+      'Payments are not configured on this server. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.'
+    );
+    error.status = 503;
+    error.code = 'GATEWAY_NOT_CONFIGURED';
+    throw error;
   }
 
   // Create Payment record with 'created' status
