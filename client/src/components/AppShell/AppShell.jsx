@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../Navbar';
 import { useLanguageStore } from '../../store/languageStore';
@@ -39,7 +40,10 @@ export default function AppShell({ children, width = 'default', className }) {
       <footer className="border-t border-line px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 text-[12px] text-ink-faint sm:flex-row">
           <p>© {new Date().getFullYear()} VaaniTutor — AI voice language tutor</p>
-          <p className="font-mono text-[11px]">Kannada · Hindi · English · +8 more</p>
+          <nav className="flex gap-4">
+            <Link to="/privacy" className="hover:text-ink">Privacy</Link>
+            <Link to="/terms" className="hover:text-ink">Terms</Link>
+          </nav>
         </div>
       </footer>
     </div>

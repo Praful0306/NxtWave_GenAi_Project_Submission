@@ -21,6 +21,8 @@ const Progress = lazy(() => import('./pages/Progress'));
 const Practice = lazy(() => import('./pages/Practice'));
 const Paywall = lazy(() => import('./pages/Paywall'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function RouteFallback() {
@@ -54,6 +56,8 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/oauth-callback" element={<OAuthCallback />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
 
           {/* Authenticated */}
           <Route path="/onboarding" element={protect(<Onboarding />)} />

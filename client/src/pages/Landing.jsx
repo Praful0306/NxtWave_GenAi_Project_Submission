@@ -200,7 +200,11 @@ export default function Landing() {
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
           <Brandmark />
           <div className="space-y-1 text-[12px] text-ink-faint">
-            <p>© {new Date().getFullYear()} VaaniTutor — NxtWave GenAI project</p>
+            <p>
+              © {new Date().getFullYear()} VaaniTutor — NxtWave GenAI project ·{' '}
+              <Link to="/privacy" className="hover:text-ink">Privacy</Link> ·{' '}
+              <Link to="/terms" className="hover:text-ink">Terms</Link>
+            </p>
             <p className="font-mono text-[11px]">
               ಕನ್ನಡ · हिन्दी · English · தமிழ் · తెలుగు · বাংলা · मराठी · ગુજરાતી · ਪੰਜਾਬੀ · മലയാളം · ଓଡ଼ିଆ
             </p>
