@@ -31,8 +31,18 @@ async def verify_user_jwt(request: Request) -> dict:
     token = auth_header.split(" ", 1)[1]
 
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
-        return {"userId": payload["userId"], "email": payload["email"]}
+        # `leeway` tolerates clock drift between server-node (which issues the
+        # token) and this service. Without it, a token used within a second or
+        # two of being issued can look "not yet valid" to a host whose clock is
+        # marginally behind, and the very first call after login fails with a
+        # spurious 401 that succeeds on retry.
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=["HS256"],
+            leeway=60,
+        )
+        return {"userId": payload["userId"], "email": payload.get("email")}
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=401,
